@@ -1,103 +1,331 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { ArrowRight, Users, MessageSquare, Heart, TrendingUp, Edit3, Globe, Zap, Shield, Rocket, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import ParticleBackground from '@/components/ui/ParticleBackground';
+import { HeroSection } from '@/components/homepage/hero/HeroSection';
+
+const MotionDiv = motion.div;
+
+export default function HomePage() {
+  const [isMounted, setIsMounted] = useState(false);
+  const [activeFeature, setActiveFeature] = useState(0);
+
+  useEffect(() => {
+    setIsMounted(true);
+
+    // Rotate featured items
+    const interval = setInterval(() => {
+      setActiveFeature(prev => (prev + 1) % 6);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const features = [
+    {
+      icon: Globe,
+      title: "Decentralized",
+      description: "Your content lives on the blockchain, ensuring true ownership and censorship resistance",
+      color: "futuristic-blue"
+    },
+    {
+      icon: Heart,
+      title: "Earn Rewards",
+      description: "Get rewarded in HIVE and HBD tokens for creating quality content and engaging with others",
+      color: "futuristic-purple"
+    },
+    {
+      icon: Users,
+      title: "Global Community",
+      description: "Connect with millions of users worldwide who share your interests and passions",
+      color: "futuristic-cyan"
+    },
+    {
+      icon: Edit3,
+      title: "Rich Content",
+      description: "Create posts with markdown, images, and multimedia content",
+      color: "futuristic-pink"
+    },
+    {
+      icon: MessageSquare,
+      title: "Engage & Discuss",
+      description: "Comment, vote, and share content to build meaningful connections",
+      color: "futuristic-teal"
+    },
+    {
+      icon: TrendingUp,
+      title: "Trending Topics",
+      description: "Discover what's popular and join conversations that matter to you",
+      color: "futuristic-indigo"
+    }
+  ];
+
+  const steps = [
+    {
+      number: "1",
+      title: "Connect Wallet",
+      description: "Login with Hive Keychain or HiveSigner to access your account",
+      color: "futuristic-blue"
+    },
+    {
+      number: "2",
+      title: "Create Content",
+      description: "Write posts, share images, and express your thoughts with the community",
+      color: "futuristic-purple"
+    },
+    {
+      number: "3",
+      title: "Earn Rewards",
+      description: "Get upvotes and earn HIVE tokens for quality content and engagement",
+      color: "futuristic-cyan"
+    }
+  ];
+
+  const heroActions = [
+    {
+      label: "Join the Community",
+      href: "/social",
+      variant: "default" as const
+    },
+    {
+      label: "Explore Posts",
+      href: "/social",
+      variant: "outline" as const
+    }
+  ];
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen">
+      <ParticleBackground />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      {/* Hero Section */}
+      <HeroSection
+        title="Share Your Voice"
+        subtitle="On The Hive Blockchain"
+        description="Connect with a global community, share your thoughts, and earn rewards for your content on the decentralized Hive social network."
+        actions={heroActions}
+      />
+
+      {/* Features Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="max-w-6xl mx-auto">
+          <MotionDiv
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-futuristic-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-futuristic-blue to-futuristic-purple text-gradient">Why Choose Hive Social?</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                Built for creators who value freedom, rewards, and true ownership of their content
+              </p>
+            </div>
+          </MotionDiv>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => (
+              <MotionDiv
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ y: -10 }}
+                viewport={{ once: true }}
+              >
+                <div
+                  className={`relative p-6 rounded-2xl backdrop-blur-xl bg-white/90 border border-muted transition-all duration-500 transform-gpu hover-scale futuristic-card interactive-card group ${activeFeature === index ? 'ring-2 ring-' + feature.color + '/50 shadow-xl shadow-' + feature.color + '/30' : 'shadow-lg shadow-' + feature.color + '/10'}`}
+                  onMouseEnter={() => setActiveFeature(index)}
+                >
+                  {/* Glowing border effect */}
+                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-r from-${feature.color}/30 to-${feature.color === 'futuristic-blue' ? 'futuristic-purple' : feature.color === 'futuristic-purple' ? 'futuristic-pink' : feature.color === 'futuristic-cyan' ? 'futuristic-teal' : feature.color === 'futuristic-pink' ? 'futuristic-blue' : feature.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-blue'}/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10`}></div>
+
+                  {/* Icon container with enhanced glow */}
+                  <div className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-${feature.color}/20 to-${feature.color === 'futuristic-blue' ? 'futuristic-purple' : feature.color === 'futuristic-purple' ? 'futuristic-pink' : feature.color === 'futuristic-cyan' ? 'futuristic-teal' : feature.color === 'futuristic-pink' ? 'futuristic-blue' : feature.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-blue'}/20 rounded-xl mb-6 backdrop-blur-sm border-${feature.color}/30 svg-neon hover-scale relative overflow-hidden shadow-lg shadow-${feature.color}/20`}>
+                    <div className={`absolute inset-0 bg-gradient-to-r from-${feature.color}/30 to-${feature.color === 'futuristic-blue' ? 'futuristic-purple' : feature.color === 'futuristic-purple' ? 'futuristic-pink' : feature.color === 'futuristic-cyan' ? 'futuristic-teal' : feature.color === 'futuristic-pink' ? 'futuristic-blue' : feature.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-blue'}/30 animate-pulse`}></div>
+                    <feature.icon className={`h-8 w-8 text-${feature.color} relative z-10 drop-shadow-lg`} />
+                  </div>
+
+                  {/* Title with enhanced gradient */}
+                  <h3 className={`font-futuristic-bold mb-3 text-xl bg-clip-text text-transparent bg-gradient-to-r from-${feature.color} to-${feature.color === 'futuristic-blue' ? 'futuristic-purple' : feature.color === 'futuristic-purple' ? 'futuristic-pink' : feature.color === 'futuristic-cyan' ? 'futuristic-teal' : feature.color === 'futuristic-pink' ? 'futuristic-blue' : feature.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-blue'} text-gradient drop-shadow-sm`}>
+                    {feature.title}
+                  </h3>
+
+                  {/* Description with better typography */}
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {feature.description}
+                  </p>
+
+                  {/* Hover effect indicator */}
+                  <div className={`absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-${feature.color} to-${feature.color === 'futuristic-blue' ? 'futuristic-purple' : feature.color === 'futuristic-purple' ? 'futuristic-pink' : feature.color === 'futuristic-cyan' ? 'futuristic-teal' : feature.color === 'futuristic-pink' ? 'futuristic-blue' : feature.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-blue'} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left`}></div>
+                </div>
+              </MotionDiv>
+            ))}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-gradient-to-r from-futuristic-blue/10 to-futuristic-purple/10">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { icon: Users, value: "500K+", label: "Active Users", color: "futuristic-blue", gradient: "from-futuristic-blue to-futuristic-purple" },
+                { icon: MessageSquare, value: "2M+", label: "Posts Created", color: "futuristic-purple", gradient: "from-futuristic-purple to-futuristic-pink" },
+                { icon: Heart, value: "10M+", label: "Upvotes Given", color: "futuristic-cyan", gradient: "from-futuristic-cyan to-futuristic-teal" },
+                { icon: Zap, value: "$5M+", label: "Rewards Distributed", color: "futuristic-green", gradient: "from-futuristic-green to-futuristic-teal" }
+              ].map((stat, index) => (
+                <MotionDiv
+                  key={index}
+                  className="text-center p-6 rounded-2xl backdrop-blur-xl bg-white/90 border border-muted hover:border-futuristic-blue/50 transition-all duration-500 hover:-translate-y-2 transform-gpu hover-scale futuristic-card interactive-card group relative overflow-hidden shadow-lg shadow-futuristic-blue/10"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ y: -5 }}
+                  viewport={{ once: true }}
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-r from-${stat.color}/20 to-${stat.color === 'futuristic-blue' ? 'futuristic-purple' : stat.color === 'futuristic-purple' ? 'futuristic-pink' : stat.color === 'futuristic-cyan' ? 'futuristic-teal' : stat.color === 'futuristic-pink' ? 'futuristic-blue' : stat.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-teal'}/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10`}></div>
+                  <div className="flex justify-center mb-4 relative">
+                    <div className={`absolute inset-0 bg-${stat.color}/20 rounded-full blur-xl animate-pulse`}></div>
+                    <stat.icon className={`h-10 w-10 text-${stat.color} relative z-10 drop-shadow-lg`} />
+                  </div>
+                  <div className={`text-4xl font-futuristic-bold text-${stat.color} bg-clip-text text-transparent bg-gradient-to-r ${stat.gradient} mb-2 drop-shadow-sm`}>{stat.value}</div>
+                  <div className="text-sm text-muted-foreground mt-2 font-medium">{stat.label}</div>
+                  <div className={`absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r ${stat.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left`}></div>
+                </MotionDiv>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Getting Started Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <MotionDiv
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+            >
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-futuristic-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-futuristic-blue to-futuristic-purple text-gradient">Get Started in Minutes</h2>
+                <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                  Join the Hive community and start earning rewards for your content
+                </p>
+              </div>
+            </MotionDiv>
+
+            <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-8">
+              {steps.map((step, index) => (
+                <MotionDiv
+                  key={index}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ y: -10 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="text-center space-y-4 p-6 rounded-2xl backdrop-blur-xl bg-white/90 border border-muted hover:border-futuristic-blue/50 transition-all duration-500 transform-gpu hover-scale futuristic-card interactive-card group relative overflow-hidden shadow-lg shadow-futuristic-blue/10">
+                    {/* Glowing background effect */}
+                    <div className={`absolute inset-0 bg-gradient-to-r from-${step.color}/20 to-${step.color === 'futuristic-blue' ? 'futuristic-purple' : step.color === 'futuristic-purple' ? 'futuristic-pink' : step.color === 'futuristic-cyan' ? 'futuristic-teal' : step.color === 'futuristic-pink' ? 'futuristic-blue' : step.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-teal'}/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10`}></div>
+
+                    {/* Step number with enhanced styling */}
+                    <div className={`mx-auto w-20 h-20 bg-gradient-to-r from-${step.color}/20 to-${step.color === 'futuristic-blue' ? 'futuristic-purple' : step.color === 'futuristic-purple' ? 'futuristic-pink' : step.color === 'futuristic-cyan' ? 'futuristic-teal' : step.color === 'futuristic-pink' ? 'futuristic-blue' : step.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-teal'}/20 rounded-full flex items-center justify-center backdrop-blur-sm border-${step.color}/30 svg-neon hover-scale relative overflow-hidden shadow-lg shadow-${step.color}/20`}>
+                      <div className={`absolute inset-0 bg-gradient-to-r from-${step.color}/30 to-${step.color === 'futuristic-blue' ? 'futuristic-purple' : step.color === 'futuristic-purple' ? 'futuristic-pink' : step.color === 'futuristic-cyan' ? 'futuristic-teal' : step.color === 'futuristic-pink' ? 'futuristic-blue' : step.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-teal'}/30 animate-pulse`}></div>
+                      <span className={`text-3xl font-futuristic-bold text-${step.color} relative z-10 drop-shadow-lg`}>{step.number}</span>
+                    </div>
+
+                    {/* Title with enhanced gradient */}
+                    <h3 className={`text-2xl font-futuristic-bold bg-clip-text text-transparent bg-gradient-to-r from-${step.color} to-${step.color === 'futuristic-blue' ? 'futuristic-purple' : step.color === 'futuristic-purple' ? 'futuristic-pink' : step.color === 'futuristic-cyan' ? 'futuristic-teal' : step.color === 'futuristic-pink' ? 'futuristic-blue' : step.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-teal'} text-gradient drop-shadow-sm`}>
+                      {step.title}
+                    </h3>
+
+                    {/* Description with better typography */}
+                    <p className="text-muted-foreground leading-relaxed">
+                      {step.description}
+                    </p>
+
+                    {/* Hover effect indicator */}
+                    <div className={`absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-${step.color} to-${step.color === 'futuristic-blue' ? 'futuristic-purple' : step.color === 'futuristic-purple' ? 'futuristic-pink' : step.color === 'futuristic-cyan' ? 'futuristic-teal' : step.color === 'futuristic-pink' ? 'futuristic-blue' : step.color === 'futuristic-teal' ? 'futuristic-indigo' : 'futuristic-teal'} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left`}></div>
+                  </div>
+                </MotionDiv>
+              ))}
+            </div>
+
+            <MotionDiv
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              viewport={{ once: true }}
+            >
+              <div className="text-center mt-12">
+                <Button size="lg" asChild className="hover-scale futuristic-button group">
+                  <Link href="/social" className="flex items-center justify-center hover-scale">
+                    Start Creating Content
+                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </Button>
+              </div>
+            </MotionDiv>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="container mx-auto px-4 py-16 bg-gradient-to-r from-futuristic-blue/5 to-futuristic-purple/5 rounded-3xl my-8">
+        <div className="max-w-3xl mx-auto text-center space-y-8 relative">
+          {/* Background glow effect */}
+          <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-futuristic-blue/10 to-futuristic-purple/10 blur-2xl -z-10"></div>
+
+          <MotionDiv
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+          >
+            <div>
+              <h2 className="text-3xl font-futuristic-bold bg-clip-text text-transparent bg-gradient-to-r from-futuristic-blue to-futuristic-purple text-gradient drop-shadow-sm">Ready to Join the Revolution?</h2>
+              <p className="text-xl text-muted-foreground leading-relaxed mt-4">
+                Be part of the future of social media where your content has real value
+              </p>
+            </div>
+          </MotionDiv>
+
+          <MotionDiv
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            viewport={{ once: true }}
+          >
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div>
+                <Button size="lg" asChild className="text-lg px-8 rounded-xl bg-gradient-to-r from-futuristic-blue to-futuristic-purple hover:from-futuristic-blue/90 hover:to-futuristic-purple/90 text-primary-foreground backdrop-blur-sm border border-futuristic-blue/30 transition-all duration-300 shadow-lg shadow-futuristic-blue/30 svg-neon mx-auto hover-scale futuristic-button group glow-border">
+                  <Link href="/social" className="flex items-center hover-scale">
+                    Get Started Now
+                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </Button>
+              </div>
+              <div>
+                <Button size="lg" variant="outline" asChild className="text-lg px-8 rounded-xl backdrop-blur-sm border-muted hover:border-futuristic-cyan/50 transition-all duration-300 hover-scale futuristic-button group shadow-lg shadow-futuristic-cyan/10 glow-border">
+                  <Link href="/docs" className="flex items-center hover-scale">
+                    <Rocket className="mr-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                    View Documentation
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </MotionDiv>
+        </div>
+      </section>
     </div>
   );
 }
