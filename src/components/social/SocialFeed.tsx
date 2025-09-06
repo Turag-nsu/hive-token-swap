@@ -133,7 +133,14 @@ export function SocialFeed() {
 
         setIsVoting(post.id);
 
+        // Add confirmation for votes
         const voteType = weight > 0 ? 'upvote' : 'downvote';
+        const confirmed = window.confirm(`Do you want to ${voteType} this post by @${post.author}?`);
+
+        if (!confirmed) {
+            setIsVoting(null);
+            return;
+        }
 
         console.log('🗳️ Voting on post:', {
             voter: username,
@@ -151,10 +158,7 @@ export function SocialFeed() {
                 weight: weight
             });
 
-            console.log('✅ Vote successful:', { voteType });
-            toast.success(`${voteType.charAt(0).toUpperCase() + voteType.slice(1)} successful!`);
-
-            // Optimistic UI update - immediately update the vote count
+            // Update post with optimistic UI update
             const newUpvotes = weight > 0 ? post.upvotes + 1 : post.upvotes;
             const newDownvotes = weight < 0 ? post.downvotes + 1 : post.downvotes;
 
@@ -165,28 +169,8 @@ export function SocialFeed() {
                 isDownvoted: weight < 0
             });
 
-            // Optional: Try to refresh data after a delay, but don't fail if it doesn't work
-            setTimeout(async () => {
-                try {
-                    console.log('🔄 Attempting to refresh post data...');
-                    const updatedPost = await hiveSocialAPI.getPostWithVotesAndReplies(post.author, post.permlink);
-                    if (updatedPost) {
-                        const refreshedPost = hiveSocialAPI.transformCondenserToSocialFeedItem(updatedPost);
-                        updatePost(post.id, {
-                            upvotes: refreshedPost.upvotes,
-                            downvotes: refreshedPost.downvotes,
-                            replies: refreshedPost.replies,
-                            isUpvoted: refreshedPost.isUpvoted,
-                            isDownvoted: refreshedPost.isDownvoted
-                        });
-                        console.log('🔄 Post data refreshed successfully');
-                    }
-                } catch (refreshError) {
-                    // Don't show error to user for refresh failure - optimistic update is sufficient
-                    console.log('ℹ️ Post refresh failed (using optimistic data):', refreshError);
-                }
-            }, 3000); // Wait 3 seconds for blockchain confirmation
-
+            console.log('✅ Vote successful:', { voteType, newUpvotes, newDownvotes });
+            toast.success(`${voteType.charAt(0).toUpperCase() + voteType.slice(1)} successful!`);
         } catch (error: any) {
             console.error('❌ Error voting:', error);
             toast.error(error.message || `Failed to ${voteType}`);
@@ -430,7 +414,7 @@ export function SocialFeed() {
                                             disabled={!isAuthenticated}
                                         >
                                             <MessageCircle className="w-4 h-4 mr-1" />
-                                            {post.replies > 0 ? `${post.replies} Replies` : 'Reply'}
+                                            Reply
                                         </Button>
                                     </div>
 

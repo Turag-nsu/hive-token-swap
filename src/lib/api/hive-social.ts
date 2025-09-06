@@ -1,13 +1,8 @@
 import { Client } from '@hiveio/dhive';
 import { CommentData, VoteData, SocialFeedItem, UserProfile } from '@/types/social';
 
-// Use multiple stable RPC nodes for redundancy
-const HIVE_NODES = [
-  'https://api.hive.blog',
-  'https://api.openhive.network',
-  'https://hived.privex.io',
-  'https://rpc.ecency.com'
-];
+// Use a single stable RPC node to avoid switching issues
+const HIVE_NODE = 'https://api.hive.blog';
 
 // Custom fetch function to avoid "Illegal invocation" errors
 const customFetch = (url: string, options?: RequestInit): Promise<Response> => {
@@ -16,29 +11,15 @@ const customFetch = (url: string, options?: RequestInit): Promise<Response> => {
 
 export class HiveSocialAPI {
   private client: Client;
-  private currentNodeIndex: number = 0;
   
   constructor() {
     // Configure dhive client with proper fetch and timeout settings
-    this.client = new Client(HIVE_NODES[0], {
+    this.client = new Client(HIVE_NODE, {
       timeout: 15000,
-      failoverThreshold: 3,
-      consoleOnFailover: true,
+      failoverThreshold: 0,
+      consoleOnFailover: false,
       // Use custom agent to avoid fetch context issues
       agent: typeof window !== 'undefined' ? undefined : undefined
-    });
-  }
-
-  // Switch to next available node
-  private switchToNextNode(): void {
-    this.currentNodeIndex = (this.currentNodeIndex + 1) % HIVE_NODES.length;
-    const newNode = HIVE_NODES[this.currentNodeIndex];
-    console.log(`🔄 Switching to node: ${newNode}`);
-    
-    this.client = new Client(newNode, {
-      timeout: 15000,
-      failoverThreshold: 3,
-      consoleOnFailover: true
     });
   }
 
@@ -52,7 +33,7 @@ export class HiveSocialAPI {
     };
 
     try {
-      const response = await customFetch(HIVE_NODES[0], {
+      const response = await customFetch(HIVE_NODE, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,61 +59,38 @@ export class HiveSocialAPI {
     }
   }
 
-  // Direct Condenser API call with failover support
+  // Direct Condenser API call with custom fetch
   private async callCondenserAPI(method: string, params: any[] = []): Promise<any> {
-    let lastError: Error | null = null;
-    
-    for (let attempt = 0; attempt < HIVE_NODES.length; attempt++) {
-      try {
-        // Use dhive's database API for better reliability
-        const result = await this.client.database.call(method, params);
-        console.log(`✅ API call successful: ${method} on ${HIVE_NODES[this.currentNodeIndex]}`);
-        return result;
-      } catch (error) {
-        lastError = error as Error;
-        console.warn(`⚠️ API call failed on ${HIVE_NODES[this.currentNodeIndex]}: ${error}`);
-        
-        if (attempt < HIVE_NODES.length - 1) {
-          this.switchToNextNode();
-          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
-        }
-      }
-    }
-    
-    throw lastError || new Error(`All ${HIVE_NODES.length} nodes failed for ${method}`);
-  }
+    const body = {
+      jsonrpc: '2.0',
+      method: `condenser_api.${method}`,
+      params,
+      id: 1
+    };
 
-  // Get post with fresh votes and replies
-  async getPostWithVotesAndReplies(author: string, permlink: string): Promise<any> {
     try {
-      console.log(`🔄 Fetching fresh post data for ${author}/${permlink}`);
-      
-      // Get the fresh post content
-      const post = await this.callCondenserAPI('get_content', [author, permlink]);
-      
-      if (!post || !post.author) {
-        throw new Error('Post not found');
+      const response = await customFetch(HIVE_NODE, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      // Get fresh replies
-      const replies = await this.callCondenserAPI('get_content_replies', [author, permlink]);
-      
-      // Add replies to post
-      post.replies = replies || [];
-      post.reply_count = replies ? replies.length : 0;
-      
-      console.log(`✅ Fresh post data retrieved:`, {
-        author: post.author,
-        permlink: post.permlink,
-        activeVotes: post.active_votes?.length || 0,
-        netVotes: post.net_votes,
-        replyCount: post.reply_count
-      });
-      
-      return post;
+      const data = await response.json();
+        
+      if (data.error) {
+        throw new Error(`API Error: ${data.error.message || JSON.stringify(data.error)}`);
+      }
+
+      return data.result;
     } catch (error) {
-      console.error(`Error fetching fresh post data for ${author}/${permlink}:`, error);
-      throw error;
+      console.error(`Condenser API call failed for ${method}:`, error);
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -522,14 +480,14 @@ export class HiveSocialAPI {
         coverImage: profile.cover_image || '',
         profileImage: profile.profile_image || '',
         reputation: this.calculateReputation(account.reputation),
-        hiveBalance: account.balance || '0.000 HIVE',
-        hbdBalance: account.hbd_balance || '0.000 HBD',
-        hp: `${hivePower.toFixed(3)} HP`,
-        votingPower: 100, // Simplified for now
-        downvotePower: 100, // Simplified for now
-        postCount: account.post_count || 0,
         followersCount: 0, // Would need separate API call
-        followingCount: 0 // Would need separate API call
+        followingCount: 0, // Would need separate API call
+        postCount: account.post_count || 0,
+        joinDate: account.created,
+        votingPower: 100, // Simplified for now
+        balance: account.balance || '0.000 HIVE',
+        hbdBalance: account.hbd_balance || '0.000 HBD',
+        vestingShares: account.vesting_shares || '0.000000 VESTS'
       };
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -606,8 +564,8 @@ export class HiveSocialAPI {
     });
   }
 
-  // Transform Condenser API post to social feed item (public method)
-  public transformCondenserToSocialFeedItem = (post: any): SocialFeedItem => {
+  // Transform Condenser API post to social feed item
+  private transformCondenserToSocialFeedItem = (post: any): SocialFeedItem => {
     console.log('🔍 Transforming Condenser API post:', {
       author: post.author,
       permlink: post.permlink,
@@ -681,13 +639,10 @@ export class HiveSocialAPI {
       category: post.category || tags[0] || '',
       upvotes,
       downvotes,
-      replies: post.reply_count || post.children || 0,
       payout: payout + ' HBD',
       reputation: this.calculateReputation(post.author_reputation),
       tags,
-      images,
-      isUpvoted: false, // TODO: Check if current user voted
-      isDownvoted: false // TODO: Check if current user voted
+      images
     };
   }
 
@@ -786,13 +741,10 @@ export class HiveSocialAPI {
       category: post.category || tags[0] || '',
       upvotes,
       downvotes,
-      replies: post.children || 0,
       payout: payout + ' HBD',
       reputation: this.calculateReputation(post.author_reputation),
       tags,
-      images,
-      isUpvoted: false, // TODO: Check if current user voted
-      isDownvoted: false // TODO: Check if current user voted
+      images
     };
   }
 

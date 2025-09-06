@@ -107,7 +107,6 @@ export interface SocialFeedItem {
   category: string;
   upvotes: number;
   downvotes: number;
-  replies: number;
   payout: string;
   isUpvoted?: boolean;
   isDownvoted?: boolean;
