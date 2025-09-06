@@ -34,20 +34,61 @@ export interface KeychainResponse {
 }
 
 export interface HiveAccount {
+  id?: number;
   name: string;
-  balance: string;
-  hbd_balance: string;
-  vesting_shares: string;
-  delegated_vesting_shares: string;
-  received_vesting_shares: string;
-  posting?: {
-    key_auths: [string, number][];
-    account_auths: [string, number][];
-  };
+  owner?: any;
   active?: {
     key_auths: [string, number][];
     account_auths: [string, number][];
   };
+  posting?: {
+    key_auths: [string, number][];
+    account_auths: [string, number][];
+  };
+  memo_key?: string;
+  json_metadata?: string;
+  posting_json_metadata?: string;
+  proxy?: string;
+  last_owner_update?: string;
+  last_account_update?: string;
+  created?: string;
+  mined?: boolean;
+  recovery_account?: string;
+  last_account_recovery?: string;
+  reset_account?: string;
+  comment_count?: number;
+  lifetime_vote_count?: number;
+  post_count?: number;
+  can_vote?: boolean;
+  voting_manabar?: { current_mana: string; last_update_time: number };
+  downvote_manabar?: { current_mana: string; last_update_time: number };
+  balance: string;
+  savings_balance?: string;
+  hbd_balance: string;
+  hbd_savings_balance?: string;
+  savings_withdraw_requests?: number;
+  reward_hbd_balance?: string;
+  reward_hive_balance?: string;
+  reward_vesting_balance?: string;
+  reward_vesting_hive?: string;
+  vesting_shares: string;
+  delegated_vesting_shares: string;
+  received_vesting_shares: string;
+  vesting_withdraw_rate?: string;
+  next_vesting_withdrawal?: string;
+  withdrawn?: number;
+  to_withdraw?: number;
+  withdraw_routes?: number;
+  curation_rewards?: number;
+  posting_rewards?: number;
+  proxied_vsf_votes?: any[];
+  witnesses_voted_for?: number;
+  last_post?: string;
+  last_root_post?: string;
+  last_vote_time?: string;
+  post_bandwidth?: number;
+  pending_claimed_accounts?: number;
+  reputation?: string;
 }
 
 export interface HiveEngineToken {

@@ -1,6 +1,6 @@
 import { KeychainSDK } from 'keychain-sdk';
+import { KeychainKeyTypes } from 'hive-keychain-commons/lib/interfaces/keychain';
 import type { Operation } from '@/types';
-import { OperationBuilder } from './operations';
 
 interface KeychainRequest {
   username: string;
@@ -144,7 +144,7 @@ class KeychainManager {
       const result = await this.keychain.broadcast({
         username,
         operations,
-        method: keyType.toLowerCase() as any
+        method: keyType === 'Posting' ? KeychainKeyTypes.posting : KeychainKeyTypes.active
       });
 
       if (result.success) {
@@ -201,7 +201,7 @@ class KeychainManager {
       const result = await this.keychain.signBuffer({
         username,
         message,
-        method: keyType.toLowerCase() as any
+        method: keyType === 'Posting' ? KeychainKeyTypes.posting : KeychainKeyTypes.active
       });
 
       if (result.success) {
@@ -275,7 +275,7 @@ class KeychainManager {
       const result = await this.keychain.broadcast({
         username: follower,
         operations: [followOp],
-        method: 'posting'
+        method: KeychainKeyTypes.posting
       });
 
       if (result.success) {
@@ -349,7 +349,7 @@ class KeychainManager {
       const result = await this.keychain.broadcast({
         username: follower,
         operations: [unfollowOp],
-        method: 'posting'
+        method: KeychainKeyTypes.posting
       });
 
       if (result.success) {

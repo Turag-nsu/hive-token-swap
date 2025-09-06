@@ -1,8 +1,8 @@
 "use client";
 
+import { Gift, MessageCircle, UserPlus, MoreHorizontal } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Gift, MessageCircle, UserPlus, MoreHorizontal } from 'lucide-react';
 import { useTheme } from '@/providers/ThemeProvider';
 
 interface UserProfileActionsProps {

@@ -8,6 +8,40 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 
+// Function to get transaction icon based on type
+const getTransactionIcon = (type: string) => {
+  switch (type) {
+    case 'transfer':
+      return '💸';
+    case 'power_up':
+      return '🔋';
+    case 'power_down':
+      return '📉';
+    case 'delegation':
+      return '🤝';
+    case 'reward':
+      return '🏆';
+    case 'conversion':
+      return '💱';
+    default:
+      return '📋';
+  }
+};
+
+// Function to get status color class based on status
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'completed':
+      return 'bg-green-100 text-green-800';
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'failed':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
 export function TransactionHistory() {
     const { user } = useWallet();
     const { transactions, stats, loading, error, refreshHistory } = useTransactionHistory(user?.name || null);
@@ -26,60 +60,6 @@ export function TransactionHistory() {
 
         return matchesSearch && matchesType;
     });
-
-    const getTransactionIcon = (type: string) => {
-        switch (type) {
-            case 'transfer':
-                return '💸';
-            case 'power_up':
-                return '⚡';
-            case 'power_down':
-                return '📉';
-            case 'delegation':
-                return '🤝';
-            case 'reward':
-                return '🎁';
-            case 'conversion':
-                return '🔄';
-            case 'custom':
-                return '⚙️';
-            default:
-                return '📄';
-        }
-    };
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'completed':
-                return 'bg-green-500/10 text-green-700 border-green-200';
-            case 'pending':
-                return 'bg-yellow-500/10 text-yellow-700 border-yellow-200';
-            case 'failed':
-                return 'bg-red-500/10 text-red-700 border-red-200';
-            default:
-                return 'bg-gray-500/10 text-gray-700 border-gray-200';
-        }
-    };
-
-    const formatTimestamp = (timestamp: string) => {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diff = now.getTime() - date.getTime();
-
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        const days = Math.floor(diff / 86400000);
-
-        if (minutes < 60) {
-            return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
-        } else if (hours < 24) {
-            return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
-        } else if (days < 7) {
-            return `${days} day${days !== 1 ? 's' : ''} ago`;
-        } else {
-            return date.toLocaleDateString();
-        }
-    };
 
     if (!user) {
         return (
@@ -206,40 +186,6 @@ export function TransactionHistory() {
 
 // Individual transaction row component
 function TransactionRow({ transaction }: { transaction: Transaction }) {
-    const getTransactionIcon = (type: string) => {
-        switch (type) {
-            case 'transfer':
-                return '💸';
-            case 'power_up':
-                return '⚡';
-            case 'power_down':
-                return '📉';
-            case 'delegation':
-                return '🤝';
-            case 'reward':
-                return '🎁';
-            case 'conversion':
-                return '🔄';
-            case 'custom':
-                return '⚙️';
-            default:
-                return '📄';
-        }
-    };
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'completed':
-                return 'bg-green-500/10 text-green-700 border-green-200';
-            case 'pending':
-                return 'bg-yellow-500/10 text-yellow-700 border-yellow-200';
-            case 'failed':
-                return 'bg-red-500/10 text-red-700 border-red-200';
-            default:
-                return 'bg-gray-500/10 text-gray-700 border-gray-200';
-        }
-    };
-
     const formatTimestamp = (timestamp: string) => {
         const date = new Date(timestamp);
         const now = new Date();

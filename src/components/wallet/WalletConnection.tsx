@@ -7,7 +7,6 @@ import {
   AlertCircle,
   CheckCircle,
   ExternalLink,
-  Key,
   RefreshCw,
   User
 } from 'lucide-react';

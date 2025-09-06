@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
+import { RefreshCw } from 'lucide-react';
 import { Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalFooter, ModalClose } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { SocialFeedItem } from '@/types/social';
-import { toast } from 'sonner';
 import { useUser } from '@/hooks/useUser';
-import { formatDistanceToNow } from 'date-fns';
-import { RefreshCw } from 'lucide-react';
-import { usePostComment, usePostDetail, socialFeedQueryKeys } from '@/hooks/useSocialFeed'; // Updated import
-import { useQueryClient } from '@tanstack/react-query';
+import { usePostComment, usePostDetail } from '@/hooks/useSocialFeed'; // Fixed import
 
 interface CommentModalProps {
   open: boolean;
@@ -25,7 +24,6 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 }) => {
   const { username } = useUser();
   const [comment, setComment] = useState('');
-  const queryClient = useQueryClient();
   
   // Use our new React Query hook for posting comments
   const { mutate: postComment, isPending: isSubmitting } = usePostComment();
@@ -51,7 +49,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   const extractImageFromBody = (body: string): string | null => {
     const imageRegex = /!\[.*?\]\((https?:\/\/[^\s)]+)\)/;
     const match = body.match(imageRegex);
-    return match ? match[1] : null;
+    return match && match[1] ? match[1] : null;
   };
 
   useEffect(() => {

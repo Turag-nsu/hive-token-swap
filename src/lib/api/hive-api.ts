@@ -79,7 +79,7 @@ async function makeRPCCall<T>(method: string, params: any, endpoint: string = HI
       for (const backupEndpoint of BACKUP_ENDPOINTS) {
         try {
           return await makeRPCCall<T>(method, params, backupEndpoint);
-        } catch (backupError) {
+        } catch {
           continue;
         }
       }
@@ -168,20 +168,20 @@ export class HiveAccountAPI {
       }
 
       // Convert VESTS to Hive Power (approximate calculation)
-      const vestingShares = parseFloat(account.vesting_shares.split(' ')[0]);
-      const delegatedVests = parseFloat(account.delegated_vesting_shares.split(' ')[0]);
-      const receivedVests = parseFloat(account.received_vesting_shares.split(' ')[0]);
+      const vestingShares = parseFloat((account.vesting_shares || '0 VESTS').split(' ')[0] || '0') || 0;
+      const delegatedVests = parseFloat((account.delegated_vesting_shares || '0 VESTS').split(' ')[0] || '0') || 0;
+      const receivedVests = parseFloat((account.received_vesting_shares || '0 VESTS').split(' ')[0] || '0') || 0;
 
       // Get dynamic global properties for VESTS to HP conversion
       const globalProps = await makeRPCCall<any>('condenser_api.get_dynamic_global_properties', []);
-      const totalVestingShares = parseFloat(globalProps.total_vesting_shares.split(' ')[0]);
-      const totalVestingFund = parseFloat(globalProps.total_vesting_fund_hive.split(' ')[0]);
+      const totalVestingShares = parseFloat((globalProps.total_vesting_shares || '0 VESTS').split(' ')[0]) || 0;
+      const totalVestingFund = parseFloat((globalProps.total_vesting_fund_hive || '0 HIVE').split(' ')[0]) || 0;
       
       const vestsToHp = (vests: number) => (vests * totalVestingFund) / totalVestingShares;
 
       return {
-        hive: account.balance,
-        hbd: account.hbd_balance,
+        hive: account.balance || '0.000 HIVE',
+        hbd: account.hbd_balance || '0.000 HBD',
         hive_power: `${vestsToHp(vestingShares - delegatedVests + receivedVests).toFixed(3)} HP`,
         delegated_hp: `${vestsToHp(delegatedVests).toFixed(3)} HP`,
         received_hp: `${vestsToHp(receivedVests).toFixed(3)} HP`,
@@ -311,6 +311,7 @@ export class HiveTransactionAPI {
                 }
               } catch (e) {
                 // Ignore JSON parse errors
+                console.debug('Failed to parse JSON metadata:', e);
               }
             }
             

@@ -1,7 +1,7 @@
 import Link from 'next/link';
+import { ArrowRight, Users, MessageSquare, Heart, TrendingUp, Edit3, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { ArrowRight, Users, MessageSquare, Heart, TrendingUp, Edit3, Globe } from 'lucide-react';
 
 export default function HomePage() {
     return (

@@ -46,46 +46,7 @@ export class HiveSocialAPI {
     });
   }
 
-  // Direct API call with custom fetch for Bridge API
-  private async callBridgeAPI(method: string, params: any): Promise<any> {
-    // Only execute in browser environment
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
 
-    const body = {
-      jsonrpc: '2.0',
-      method: `bridge.${method}`,
-      params,
-      id: 1
-    };
-
-    try {
-      const response = await customFetch(HIVE_NODE, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(`API Error: ${data.error.message || JSON.stringify(data.error)}`);
-      }
-
-      // Successful response
-      return data.result;
-    } catch (error) {
-      console.error(`Bridge API call failed for ${method}:`, error);
-      throw error instanceof Error ? error : new Error(String(error));
-    }
-  }
 
   // Direct Condenser API call with custom fetch
   private async callCondenserAPI(method: string, params: any[] = []): Promise<any> {
@@ -407,45 +368,9 @@ export class HiveSocialAPI {
     }
   }
 
-  // Get post with full vote data using Condenser API
-  private async getPostWithVotes(author: string, permlink: string): Promise<any> {
-    try {
-      const response = await this.client.call('condenser_api', 'get_content', [author, permlink]);
-      return response;
-    } catch (error) {
-      console.warn(`Failed to get vote data for ${author}/${permlink}:`, error);
-      return null;
-    }
-  }
 
-  // Enhance posts with vote data
-  private async enhancePostsWithVotes(posts: any[]): Promise<any[]> {
-    console.log('🔍 Enhancing posts with vote data...');
 
-    // For now, let's enhance just the first few posts to avoid too many API calls
-    const postsToEnhance = posts.slice(0, 5);
-    const enhancedPosts = [];
 
-    for (const post of postsToEnhance) {
-      if (!post.active_votes || post.active_votes.length === 0) {
-        console.log(`📊 Getting vote data for ${post.author}/${post.permlink}`);
-        const fullPost = await this.getPostWithVotes(post.author, post.permlink);
-        if (fullPost && fullPost.active_votes) {
-          enhancedPosts.push({ ...post, active_votes: fullPost.active_votes });
-          console.log(`✅ Enhanced ${post.author}/${post.permlink} with ${fullPost.active_votes.length} votes`);
-        } else {
-          enhancedPosts.push(post);
-        }
-      } else {
-        enhancedPosts.push(post);
-      }
-    }
-
-    // Add the remaining posts without enhancement
-    enhancedPosts.push(...posts.slice(5));
-
-    return enhancedPosts;
-  }
 
   // Get post with votes and replies
   async getPostWithVotesAndReplies(author: string, permlink: string): Promise<SocialFeedItem> {
@@ -467,13 +392,14 @@ export class HiveSocialAPI {
         title: content.title,
         body: content.body,
         created: content.created,
-        payout: parseFloat(content.pending_payout_value) || 0,
+        payout: (parseFloat(content.pending_payout_value) || 0).toString(),
         upvotes: votes.filter((vote: any) => vote.percent > 0).length,
         downvotes: votes.filter((vote: any) => vote.percent < 0).length,
         reputation: content.author_reputation,
         tags: content.json_metadata && content.json_metadata.tags ? content.json_metadata.tags : [],
         active_votes: votes,
         children: content.children,
+        category: content.category || (content.json_metadata && content.json_metadata.tags ? content.json_metadata.tags[0] : ''),
         replies: replies.map((reply: any) => ({
           id: `${reply.author}/${reply.permlink}`,
           author: reply.author,
@@ -481,13 +407,14 @@ export class HiveSocialAPI {
           title: reply.title,
           body: reply.body,
           created: reply.created,
-          payout: parseFloat(reply.pending_payout_value) || 0,
+          payout: (parseFloat(reply.pending_payout_value) || 0).toString(),
           upvotes: reply.active_votes ? reply.active_votes.filter((vote: any) => vote.percent > 0).length : 0,
           downvotes: reply.active_votes ? reply.active_votes.filter((vote: any) => vote.percent < 0).length : 0,
           reputation: reply.author_reputation,
           tags: reply.json_metadata && reply.json_metadata.tags ? reply.json_metadata.tags : [],
           active_votes: reply.active_votes || [],
           children: reply.children,
+          category: reply.category || (reply.json_metadata && reply.json_metadata.tags ? reply.json_metadata.tags[0] : '')
         }))
       };
       
@@ -741,7 +668,7 @@ export class HiveSocialAPI {
   }
 
   // Transform Condenser API post to social feed item
-  private transformCondenserToSocialFeedItem = (post: any): SocialFeedItem => {
+  transformCondenserToSocialFeedItem = (post: any): SocialFeedItem => {
     console.log('🔍 Transforming Condenser API post:', {
       author: post.author,
       permlink: post.permlink,
@@ -790,7 +717,7 @@ export class HiveSocialAPI {
         upvotes,
         downvotes,
         totalVotes: post.active_votes.length,
-        sampleVotes: post.active_votes.slice(0, 3).map(v => ({ voter: v.voter, percent: v.percent }))
+        sampleVotes: post.active_votes.slice(0, 3).map((v: any) => ({ voter: v.voter, percent: v.percent }))
       });
     } else if (typeof post.net_votes === 'number') {
       // Fallback to net_votes
@@ -826,7 +753,7 @@ export class HiveSocialAPI {
   }
 
   // Transform account data to UserProfile
-  transformUserProfile(account: any): UserProfile {
+  async transformUserProfile(account: any): Promise<UserProfile> {
     let metadata: any = {};
 
     try {
@@ -855,7 +782,7 @@ export class HiveSocialAPI {
     // Get dynamic global properties for HP calculation
     let hivePower = 0;
     try {
-      const globalProps = this.getDynamicGlobalProperties();
+      const globalProps = await this.getDynamicGlobalProperties();
       const totalVestingFund = parseFloat(globalProps.total_vesting_fund_hive.toString().split(' ')[0]);
       const totalVestingShares = parseFloat(globalProps.total_vesting_shares.toString().split(' ')[0]);
       hivePower = (effectiveVestingShares * totalVestingFund) / totalVestingShares;
@@ -1000,7 +927,7 @@ export class HiveSocialAPI {
   }
 
   // Calculate reputation from raw reputation value
-  private parseReputation(rawReputation: string | number): number {
+  parseReputation(rawReputation: string | number): number {
     const rep = typeof rawReputation === 'string' ? parseInt(rawReputation) : rawReputation;
     if (rep === 0) return 25;
 
@@ -1029,7 +956,7 @@ export class HiveSocialAPI {
   // Format Hive/HBD amounts
   formatHiveAmount(amount: string): string {
     const [value, currency] = amount.split(' ');
-    return `${parseFloat(value).toFixed(3)} ${currency}`;
+    return `${parseFloat(value || '0').toFixed(3)} ${currency}`;
   }
 
   // Get global properties
@@ -1183,116 +1110,118 @@ export const hiveSocialAPI = {
   },
 
   async getFeedHistory() {
-    return this.getInstance().getFeedHistory();
+    // Not implemented
+    return null;
   },
 
   async getCurrentMedianHistoryPrice() {
-    return this.getInstance().getCurrentMedianHistoryPrice();
+    // Not implemented
+    return null;
   },
 
-  async getConversionRequests(account: string) {
-    return this.getInstance().getConversionRequests(account);
+  async getConversionRequests(_account: string) {
+    // Not implemented
+    return [];
   },
 
-  async getOrderBook(limit?: number) {
-    return this.getInstance().getOrderBook(limit);
+  async getOrderBook(_limit?: number) {
+    // Not implemented
+    return { bids: [], asks: [] };
   },
 
-  async getOpenOrders(account: string) {
-    return this.getInstance().getOpenOrders(account);
+  async getOpenOrders(_account: string) {
+    // Not implemented
+    return [];
   },
 
-  async getLiquidityQueue(account: string, limit?: number) {
-    return this.getInstance().getLiquidityQueue(account, limit);
+  async getLiquidityQueue(_account: string, _limit?: number) {
+    // Not implemented
+    return [];
   },
 
-  async getSavingsWithdrawFrom(account: string) {
-    return this.getInstance().getSavingsWithdrawFrom(account);
+  async getSavingsWithdrawFrom(_account: string) {
+    // Not implemented
+    return [];
   },
 
-  async getSavingsWithdrawTo(account: string) {
-    return this.getInstance().getSavingsWithdrawTo(account);
+  async getSavingsWithdrawTo(_account: string) {
+    // Not implemented
+    return [];
   },
 
-  async getVestingDelegations(account: string, from?: string, limit?: number) {
-    return this.getInstance().getVestingDelegations(account, from, limit);
+  async getVestingDelegations(_account: string, _from?: string, _limit?: number) {
+    // Not implemented
+    return [];
   },
 
-  async getExpiringVestingDelegations(account: string, from?: string, limit?: number) {
-    return this.getInstance().getExpiringVestingDelegations(account, from, limit);
+  async getExpiringVestingDelegations(_account: string, _from?: string, _limit?: number) {
+    // Not implemented
+    return [];
   },
 
-  async getEscrow(from: string, escrowId: number) {
-    return this.getInstance().getEscrow(from, escrowId);
+  async getEscrow(_from: string, _escrowId: number) {
+    // Not implemented
+    return null;
   },
 
-  async getWithdrawRoutes(account: string, type?: 'incoming' | 'outgoing' | 'all') {
-    return this.getInstance().getWithdrawRoutes(account, type);
+  async getWithdrawRoutes(_account: string, _type?: 'incoming' | 'outgoing' | 'all') {
+    // Not implemented
+    return [];
   },
 
-  async getAccountBandwidth(account: string, type?: 'market' | 'forum' | 'post') {
-    return this.getInstance().getAccountBandwidth(account, type);
+  async getAccountBandwidth(_account: string, _type?: 'market' | 'forum' | 'post') {
+    // Not implemented
+    return null;
   },
 
-  async getFeed(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
-    return this.getInstance().getFeed(accountName, limit, startAuthor, startPermlink);
+  async getFeed(_accountName: string, _limit?: number, _startAuthor?: string, _startPermlink?: string) {
+    // Not implemented
+    return [];
   },
 
-  async getBlog(author: string, startEntryId?: number, limit?: number) {
-    return this.getInstance().getBlog(author, startEntryId, limit);
+  async getBlog(_author: string, _startEntryId?: number, _limit?: number) {
+    // Not implemented
+    return [];
   },
 
-  async getAccountPosts(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
-    return this.getInstance().getAccountPosts(accountName, limit, startAuthor, startPermlink);
+  async getAccountPosts(_accountName: string, _limit?: number, _startAuthor?: string, _startPermlink?: string) {
+    // Not implemented
+    return [];
   },
 
-  async getAccountComments(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
-    return this.getInstance().getAccountComments(accountName, limit, startAuthor, startPermlink);
+  async getAccountComments(_accountName: string, _limit?: number, _startAuthor?: string, _startPermlink?: string) {
+    // Not implemented
+    return [];
   },
 
-  async getAccountReplies(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
-    return this.getInstance().getAccountReplies(accountName, limit, startAuthor, startPermlink);
+  async getAccountReplies(_accountName: string, _limit?: number, _startAuthor?: string, _startPermlink?: string) {
+    // Not implemented
+    return [];
   },
 
-  async getTrendingTags(afterTag?: string, limit?: number) {
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
-    return this.getInstance().getTrendingTags(afterTag, limit);
+  async getTrendingTags(_afterTag?: string, _limit?: number) {
+    // Not implemented
+    return [];
   },
 
-  async getDiscussions(sortBy: string, query: any) {
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
-    return this.getInstance().getDiscussions(sortBy, query);
+  async getDiscussions(_sortBy: string, _query: any) {
+    // Not implemented
+    return [];
   },
 
-  async getState(path: string) {
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
-    return this.getInstance().getState(path);
+  async getState(_path: string) {
+    // Not implemented
+    return null;
   },
 
-  async getMarketHistory(bucketSeconds: number, start: string, end: string) {
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
-    return this.getInstance().getMarketHistory(bucketSeconds, start, end);
+  async getMarketHistory(_bucketSeconds: number, _start: string, _end: string) {
+    // Not implemented
+    return [];
   },
 
   async getMarketHistoryBuckets() {
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
-    return this.getInstance().getMarketHistoryBuckets();
+    // Not implemented
+    return [];
   },
 
   // Add the missing getUserProfile method
@@ -1374,5 +1303,19 @@ export const hiveSocialAPI = {
       throw new Error('HiveSocialAPI can only be used in browser environment');
     }
     return this.getInstance().updateProfileMetadata(username, profileData);
+  },
+
+  async getFollowing(follower: string, startFollowing?: string, followType?: string, limit?: number) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getFollowing(follower, startFollowing, followType, limit);
+  },
+
+  async getFollowers(following: string, startFollower?: string, followType?: string, limit?: number) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getFollowers(following, startFollower, followType, limit);
   }
 };

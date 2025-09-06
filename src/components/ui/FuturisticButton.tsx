@@ -1,11 +1,11 @@
 "use client";
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { cn } from '@/utils';
 import { useTheme } from '@/providers/ThemeProvider';
 
-interface FuturisticButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface FuturisticButtonProps 
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
@@ -19,7 +19,7 @@ export const FuturisticButton = React.forwardRef<HTMLButtonElement, FuturisticBu
     size = 'md', 
     isLoading = false, 
     fullWidth = false,
-    children, 
+    children,
     ...props 
   }, ref) => {
     const { computedTheme } = useTheme();
@@ -57,13 +57,18 @@ export const FuturisticButton = React.forwardRef<HTMLButtonElement, FuturisticBu
       className
     );
     
+    // Separate HTML button props
+    const { 
+      disabled,
+      ...restProps
+    } = props;
+    
     return (
-      <motion.button
+      <button
         ref={ref}
         className={buttonClasses}
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.98 }}
-        {...props}
+        disabled={disabled}
+        {...restProps}
       >
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-inherit">
@@ -73,7 +78,7 @@ export const FuturisticButton = React.forwardRef<HTMLButtonElement, FuturisticBu
         <span className={isLoading ? "opacity-0" : "opacity-100"}>
           {children}
         </span>
-      </motion.button>
+      </button>
     );
   }
 );

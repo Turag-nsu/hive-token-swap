@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from 'react';
+import { Wallet, LogIn, User, Shield, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useUser } from '@/hooks/useUser';
-import { Wallet, LogIn, User, Shield, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
 import { keychain } from '@/lib/blockchain/keychain';
-import { hiveSocialAPI } from '@/lib/api/hive-social';
-import { UserProfile } from '@/types/social';
+// hiveSocialAPI import is not used, so we'll remove it
+// updateProfile import is not used, so we'll remove it
 
 export function SocialSidebar() {
     const { 
@@ -18,7 +18,7 @@ export function SocialSidebar() {
       userProfile, 
       login, 
       logout, 
-      updateProfile, 
+      // updateProfile is not used, so we'll remove it
       isLoading, 
       isFetching,
       refreshUser,
@@ -122,13 +122,14 @@ export function SocialSidebar() {
             await refreshUser();
             toast.success('Profile refreshed successfully');
         } catch (error) {
+            console.error('Error refreshing profile:', error);
             toast.error('Failed to refresh profile');
         }
     };
 
     if (isAuthenticated && username) {
         // Show user profile if available, otherwise show basic user info
-        const profile = userProfile as UserProfile | null;
+        const profile = userProfile;
         
         if (profile && !isLoading) {
             return (
@@ -148,7 +149,7 @@ export function SocialSidebar() {
                                 disabled={isFetching}
                                 className="absolute top-2 right-2"
                             >
-                                <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+                                <RefreshCw className={isFetching ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
                             </Button>
                         </CardHeader>
                         <CardContent className="space-y-3">
@@ -209,7 +210,7 @@ export function SocialSidebar() {
                                     <div className="w-12 h-2 bg-muted rounded-full mr-2 relative">
                                         <div
                                             className="h-full bg-primary rounded-full transition-all duration-300"
-                                            style={{ width: `${profile.votingPower || 100}%` }}
+                                            style={{ width: (profile.votingPower || 100) + '%' }}
                                         />
                                     </div>
                                     <span>{profile.votingPower || 100}%</span>
@@ -221,7 +222,7 @@ export function SocialSidebar() {
                                     <div className="w-12 h-2 bg-muted rounded-full mr-2 relative">
                                         <div
                                             className="h-full bg-destructive rounded-full transition-all duration-300"
-                                            style={{ width: `${profile.downvotePower || 100}%` }}
+                                            style={{ width: (profile.downvotePower || 100) + '%' }}
                                         />
                                     </div>
                                     <span>{profile.downvotePower || 100}%</span>

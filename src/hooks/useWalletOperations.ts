@@ -15,6 +15,19 @@ interface SignBufferParams {
   keyType: 'Posting' | 'Active' | 'Memo';
 }
 
+// Define the response interface for Hive Keychain operations
+export interface KeychainResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  result?: any;
+  data?: any;
+  id?: string;
+  publicKey?: string;
+  encoding?: string;
+  signature?: string;
+}
+
 export function useWalletOperations() {
   const transfer = useCallback(
     async (params: TransferParams, authMethod: 'keychain' | 'hivesigner' | null) => {
@@ -24,7 +37,7 @@ export function useWalletOperations() {
 
       if (authMethod === 'keychain') {
         // Hive Keychain transfer
-        return new Promise((resolve, reject) => {
+        return new Promise<KeychainResponse>((resolve, reject) => {
           if (!(window as any).hive_keychain) {
             reject(new Error('Hive Keychain not installed'));
             return;
@@ -37,7 +50,7 @@ export function useWalletOperations() {
             params.amount,
             params.memo || '',
             params.currency,
-            (response: any) => {
+            (response: KeychainResponse) => {
               if (response.success) {
                 resolve(response);
               } else {
@@ -63,7 +76,7 @@ export function useWalletOperations() {
 
       if (authMethod === 'keychain') {
         // Hive Keychain sign buffer
-        return new Promise((resolve, reject) => {
+        return new Promise<KeychainResponse>((resolve, reject) => {
           if (!(window as any).hive_keychain) {
             reject(new Error('Hive Keychain not installed'));
             return;
@@ -74,7 +87,7 @@ export function useWalletOperations() {
             params.username,
             params.message,
             params.keyType,
-            (response: any) => {
+            (response: KeychainResponse) => {
               if (response.success) {
                 resolve(response);
               } else {
@@ -100,7 +113,7 @@ export function useWalletOperations() {
 
       if (authMethod === 'keychain') {
         // Hive Keychain broadcast
-        return new Promise((resolve, reject) => {
+        return new Promise<KeychainResponse>((resolve, reject) => {
           if (!(window as any).hive_keychain) {
             reject(new Error('Hive Keychain not installed'));
             return;
@@ -111,7 +124,7 @@ export function useWalletOperations() {
             username,
             operations,
             keyType,
-            (response: any) => {
+            (response: KeychainResponse) => {
               if (response.success) {
                 resolve(response);
               } else {

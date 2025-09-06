@@ -1,10 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import React, { createContext, useReducer, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNotification } from './NotificationProvider';
 import { keychain, hiveRPC } from '@/lib';
 import { STORAGE_KEYS, QUERY_KEYS } from '@/constants';
-import { useNotification } from './NotificationProvider';
 import type { HiveAccount, Operation } from '@/types';
 
 interface WalletState {
@@ -203,7 +203,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           const accounts = await keychain.getAccounts();
           console.log('[WalletProvider] keychain accounts:', accounts);
 
-          if (accounts && accounts.length > 0) {
+          if (accounts && accounts.length > 0 && accounts[0]) {
             accountName = accounts[0].name;
             console.log('[WalletProvider] Using first account from keychain:', accountName);
           } else {
@@ -328,14 +328,55 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       // Ensure the account object has the required properties
       console.log('[WalletProvider] Processing account data');
       const accountData: HiveAccount = {
+        id: account.id !== undefined ? account.id : 0,
         name: account.name || accountName,
+        owner: account.owner || {},
+        active: account.active || { key_auths: [], account_auths: [] },
+        posting: account.posting || { key_auths: [], account_auths: [] },
+        memo_key: account.memo_key || '',
+        json_metadata: account.json_metadata || '',
+        posting_json_metadata: account.posting_json_metadata || '',
+        proxy: account.proxy || '',
+        last_owner_update: account.last_owner_update || '',
+        last_account_update: account.last_account_update || '',
+        created: account.created || '',
+        mined: account.mined !== undefined ? account.mined : false,
+        recovery_account: account.recovery_account || '',
+        last_account_recovery: account.last_account_recovery || '',
+        reset_account: account.reset_account || '',
+        comment_count: account.comment_count !== undefined ? account.comment_count : 0,
+        lifetime_vote_count: account.lifetime_vote_count !== undefined ? account.lifetime_vote_count : 0,
+        post_count: account.post_count !== undefined ? account.post_count : 0,
+        can_vote: account.can_vote !== undefined ? account.can_vote : false,
+        voting_manabar: account.voting_manabar || { current_mana: '0', last_update_time: 0 },
+        downvote_manabar: account.downvote_manabar || { current_mana: '0', last_update_time: 0 },
         balance: account.balance || '0.000 HIVE',
+        savings_balance: account.savings_balance || '0.000 HIVE',
         hbd_balance: account.hbd_balance || '0.000 HBD',
+        hbd_savings_balance: account.hbd_savings_balance || '0.000 HBD',
+        savings_withdraw_requests: account.savings_withdraw_requests !== undefined ? account.savings_withdraw_requests : 0,
+        reward_hbd_balance: account.reward_hbd_balance || '0.000 HBD',
+        reward_hive_balance: account.reward_hive_balance || '0.000 HIVE',
+        reward_vesting_balance: account.reward_vesting_balance || '0.000000 VESTS',
+        reward_vesting_hive: account.reward_vesting_hive || '0.000 HIVE',
         vesting_shares: account.vesting_shares || '0.000000 VESTS',
         delegated_vesting_shares: account.delegated_vesting_shares || '0.000000 VESTS',
         received_vesting_shares: account.received_vesting_shares || '0.000000 VESTS',
-        posting: account.posting,
-        active: account.active,
+        vesting_withdraw_rate: account.vesting_withdraw_rate || '0.000000 VESTS',
+        next_vesting_withdrawal: account.next_vesting_withdrawal || '',
+        withdrawn: account.withdrawn !== undefined ? account.withdrawn : 0,
+        to_withdraw: account.to_withdraw !== undefined ? account.to_withdraw : 0,
+        withdraw_routes: account.withdraw_routes !== undefined ? account.withdraw_routes : 0,
+        curation_rewards: account.curation_rewards !== undefined ? account.curation_rewards : 0,
+        posting_rewards: account.posting_rewards !== undefined ? account.posting_rewards : 0,
+        proxied_vsf_votes: account.proxied_vsf_votes || [],
+        witnesses_voted_for: account.witnesses_voted_for !== undefined ? account.witnesses_voted_for : 0,
+        last_post: account.last_post || '',
+        last_root_post: account.last_root_post || '',
+        last_vote_time: account.last_vote_time || '',
+        post_bandwidth: account.post_bandwidth !== undefined ? account.post_bandwidth : 0,
+        pending_claimed_accounts: account.pending_claimed_accounts !== undefined ? account.pending_claimed_accounts : 0,
+        reputation: account.reputation || '0',
       };
 
       console.log('[WalletProvider] Dispatching CONNECT_SUCCESS with account data:', accountData);

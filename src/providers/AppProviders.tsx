@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useWallet } from '../hooks/useWallet';
 import { QueryProvider } from './QueryProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { NotificationProvider } from './NotificationProvider';
@@ -18,18 +19,17 @@ import {
   useLoadingNotification,
   usePromiseNotification 
 } from './NotificationProvider';
-import { useWallet } from '../hooks/useWallet';
+import { 
+  useInvalidateQueries, 
+  useClearCache, 
+  usePrefetch 
+} from './QueryProvider';
 import { 
   useWalletConnection, 
   useWalletUser, 
   useWalletSigning,
   useKeychainStatus 
 } from '@/hooks/useWallet';
-import { 
-  useInvalidateQueries, 
-  useClearCache, 
-  usePrefetch 
-} from './QueryProvider';
 
 interface AppProvidersProps {
   children: React.ReactNode;

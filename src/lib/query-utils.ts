@@ -7,6 +7,9 @@ export const QUERY_KEYS = {
   USER_PROFILE: 'user-profile',
   COMMENTS: 'comments',
   VOTES: 'votes',
+  USER_FOLLOWING: 'user-following',
+  USER_FOLLOWERS: 'user-followers',
+  USER_POSTS: 'user-posts',
 } as const;
 
 /**

@@ -3,9 +3,15 @@ import { hiveSocialAPI } from '@/lib/api/hive-social';
 import { SocialFeedItem } from '@/types/social';
 import { QUERY_KEYS } from '@/lib/query-utils';
 
+// Define the type for page parameters
+interface PageParam {
+  startAuthor?: string;
+  startPermlink?: string;
+}
+
 // Hook for infinite scrolling social feed
 export const useSocialFeed = (filters: { sortBy?: string; tag?: string; limit?: number }) => {
-  return useInfiniteQuery({
+  return useInfiniteQuery<SocialFeedItem[], Error, SocialFeedItem[], [string, string, { sortBy?: string; tag?: string; limit?: number }], PageParam>({
     queryKey: [QUERY_KEYS.SOCIAL_FEED, 'list', filters],
     queryFn: async ({ pageParam }) => {
       const { sortBy, tag, limit } = filters;
@@ -30,12 +36,14 @@ export const useSocialFeed = (filters: { sortBy?: string; tag?: string; limit?: 
       if (lastPage.length === 0) return undefined;
       
       const lastPost = lastPage[lastPage.length - 1];
+      if (!lastPost) return undefined;
+      
       return {
         startAuthor: lastPost.author,
         startPermlink: lastPost.permlink,
       };
     },
-    initialPageParam: undefined,
+    initialPageParam: undefined as unknown as PageParam,
     staleTime: 30000, // 30 seconds
   });
 };
@@ -78,7 +86,7 @@ export const usePostComment = () => {
     }) => {
       return await hiveSocialAPI.submitPost(commentData);
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       // Invalidate and refetch the parent post and its comments
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.POST_DETAIL, variables.parent_author, variables.parent_permlink]
@@ -166,7 +174,7 @@ export const useVotePost = () => {
       
       return { previousPost };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, variables, context) => {
       // Rollback to the previous value
       if (context?.previousPost) {
         queryClient.setQueryData(
@@ -195,7 +203,7 @@ export const useVotePost = () => {
         }
       );
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       // Refetch the post to get the actual data from the blockchain
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.POST_DETAIL, variables.author, variables.permlink]

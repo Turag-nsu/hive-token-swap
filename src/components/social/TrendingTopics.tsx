@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { TrendingUp, Hash, Flame, Users, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useSocialStore } from '@/stores/social';
-import { TrendingUp, Hash, Flame, Users, Clock } from 'lucide-react';
 
 interface TrendingTopic {
     tag: string;
@@ -21,7 +21,7 @@ interface TopAuthor {
 
 export function TrendingTopics() {
     const { setFilters } = useSocialStore();
-    const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([
+    const [trendingTopics] = useState<TrendingTopic[]>([
         { tag: 'photography', count: 125, growth: 15 },
         { tag: 'crypto', count: 89, growth: 12 },
         { tag: 'travel', count: 76, growth: 8 },
@@ -32,7 +32,7 @@ export function TrendingTopics() {
         { tag: 'music', count: 38, growth: 11 }
     ]);
 
-    const [topAuthors, setTopAuthors] = useState<TopAuthor[]>([
+    const [topAuthors] = useState<TopAuthor[]>([
         { username: 'travelfeed', posts: 23, reputation: 78 },
         { username: 'photography', posts: 19, reputation: 72 },
         { username: 'cryptowriter', posts: 17, reputation: 69 },
@@ -90,7 +90,10 @@ export function TrendingTopics() {
                     <Button
                         variant="ghost"
                         className="w-full text-sm"
-                        onClick={() => setFilters({ tag: undefined, sortBy: 'trending' })}
+                        onClick={() => setFilters({ 
+                          tag: '',
+                          sortBy: 'trending' 
+                        })}
                     >
                         View All Trending
                     </Button>

@@ -1,6 +1,6 @@
-import { Client, cryptoUtils } from '@hiveio/dhive';
-import { API_ENDPOINTS, HIVE_CONFIG, NETWORK_CONFIG } from '@/constants';
-import type { HiveAccount, Operation, TransferOperation } from '@/types';
+import { Client } from '@hiveio/dhive';
+import { API_ENDPOINTS, NETWORK_CONFIG } from '@/constants';
+import type { HiveAccount, Operation } from '@/types';
 
 interface DynamicGlobalProperties {
   head_block_number: number;
@@ -43,7 +43,6 @@ interface AccountHistory {
 class HiveRPCClient {
   private client: Client;
   private backupNodes: string[];
-  private currentNodeIndex: number = 0;
 
   constructor() {
     this.backupNodes = [
@@ -267,6 +266,7 @@ class HiveRPCClient {
         const latency = Date.now() - startTime;
         results.push({ node, healthy: true, latency });
       } catch (error) {
+        console.error(`Health check failed for node ${node}:`, error);
         const latency = Date.now() - startTime;
         results.push({ node, healthy: false, latency });
       }

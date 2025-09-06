@@ -115,6 +115,7 @@ export interface SocialFeedItem {
   images?: string[];
   active_votes?: HiveVote[];
   children?: number; // Added comment count
+  replies?: SocialFeedItem[]; // Added replies property
 }
 
 export interface UserProfile {

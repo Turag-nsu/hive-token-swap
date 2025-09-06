@@ -1,11 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { 
-  Download, 
   Lock, 
   User, 
   HelpCircle,
@@ -13,6 +9,14 @@ import {
   ChevronRight,
   Key
 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card"
+import { Alert, AlertDescription } from '@/components/ui/Alert';
 
 export default function WalletSetupGuide() {
   const steps = [

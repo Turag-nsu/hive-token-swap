@@ -64,7 +64,6 @@ export function HeroSVG() {
 
             {/* Particle-like elements */}
             <motion.div
-                className="absolute top-1/3 right-1/3 w-3 h-3 rounded-full bg-[hsl(var(--futuristic-blue))]"
                 animate={{
                     y: [0, -20, 0],
                     x: [0, 10, 0],
@@ -75,10 +74,11 @@ export function HeroSVG() {
                     repeat: Infinity,
                     repeatType: "reverse"
                 }}
-            ></motion.div>
+            >
+                <div className="absolute top-1/3 right-1/3 w-3 h-3 rounded-full bg-[hsl(var(--futuristic-blue))]"></div>
+            </motion.div>
 
             <motion.div
-                className="absolute bottom-1/3 left-1/3 w-2 h-2 rounded-full bg-[hsl(var(--futuristic-purple))]"
                 animate={{
                     y: [0, 20, 0],
                     x: [0, -15, 0],
@@ -90,10 +90,11 @@ export function HeroSVG() {
                     repeatType: "reverse",
                     delay: 1
                 }}
-            ></motion.div>
+            >
+                <div className="absolute bottom-1/3 left-1/3 w-2 h-2 rounded-full bg-[hsl(var(--futuristic-purple))]"></div>
+            </motion.div>
 
             <motion.div
-                className="absolute top-2/3 left-2/3 w-2.5 h-2.5 rounded-full bg-[hsl(var(--futuristic-cyan))]"
                 animate={{
                     y: [0, -15, 0],
                     x: [0, 20, 0],
@@ -105,7 +106,9 @@ export function HeroSVG() {
                     repeatType: "reverse",
                     delay: 0.5
                 }}
-            ></motion.div>
+            >
+                <div className="absolute top-2/3 left-2/3 w-2.5 h-2.5 rounded-full bg-[hsl(var(--futuristic-cyan))]"></div>
+            </motion.div>
         </div>
     );
 }

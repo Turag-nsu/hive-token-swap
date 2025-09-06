@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, MotionProps } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Globe, Heart, Users, Edit3, MessageSquare, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
@@ -57,12 +57,13 @@ export default function FeaturesSection() {
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
                     viewport={{ once: true }}
-                    className="text-center mb-12"
                 >
-                    <h2 className="text-3xl font-futuristic-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-futuristic-blue to-futuristic-purple text-gradient">Why Choose Hive Social?</h2>
-                    <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                        Built for creators who value freedom, rewards, and true ownership of their content
-                    </p>
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl font-futuristic-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-futuristic-blue to-futuristic-purple text-gradient">Why Choose Hive Social?</h2>
+                        <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                            Built for creators who value freedom, rewards, and true ownership of their content
+                        </p>
+                    </div>
                 </MotionDiv>
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

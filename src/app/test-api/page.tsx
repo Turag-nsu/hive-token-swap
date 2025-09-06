@@ -2,10 +2,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { Loader2, Server, Monitor, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Loader2, Server, Monitor, AlertCircle } from 'lucide-react';
 import { ClientSideHiveExample } from '@/components/examples/ClientSideHiveExample';
 
 export default function TestApiPage() {

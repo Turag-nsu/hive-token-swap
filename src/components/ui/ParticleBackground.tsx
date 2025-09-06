@@ -5,12 +5,13 @@ import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
 
 const ParticleBackground = () => {
-    const particlesInit = useCallback(async engine => {
+    const particlesInit = useCallback(async (engine: any) => {
         await loadFull(engine);
     }, []);
 
-    const particlesLoaded = useCallback(async container => {
+    const particlesLoaded = useCallback(async (container: any) => {
         // Particle container loaded
+        console.log('Particles loaded', container);
     }, []);
 
     return (

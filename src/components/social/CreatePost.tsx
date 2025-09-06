@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from 'react';
+import { PenTool, Hash, X, Send, Image, Smile } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -9,8 +11,6 @@ import { Badge } from '@/components/ui/Badge';
 import { useUser } from '@/hooks/useUser';
 import { useSocialStore } from '@/stores/social';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
-import { PenTool, Hash, X, Send, Image, Smile } from 'lucide-react';
-import { toast } from 'sonner';
 
 export function CreatePost() {
     const { isAuthenticated, username } = useUser();
@@ -67,7 +67,7 @@ export function CreatePost() {
 
             const postData = {
                 parent_author: '',
-                parent_permlink: tags[0], // First tag as category
+                parent_permlink: tags.length > 0 ? tags[0] : 'hive-social', // First tag as category, fallback to 'hive-social'
                 author: username,
                 permlink: permlink,
                 title: title.trim(),
@@ -75,7 +75,13 @@ export function CreatePost() {
                 json_metadata: JSON.stringify(metadata)
             };
 
-            await hiveSocialAPI.submitPost(postData);
+            // Ensure parent_permlink is never undefined (type-safe)
+            const safePostData = {
+                ...postData,
+                parent_permlink: postData.parent_permlink || 'hive-social'
+            };
+
+            await hiveSocialAPI.submitPost(safePostData);
 
             toast.success('Post created successfully!');
 
