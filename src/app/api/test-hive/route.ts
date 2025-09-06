@@ -1,37 +1,82 @@
 import { NextResponse } from 'next/server';
-import { hiveSocialAPI } from '@/lib/api/hive-social';
+import { Client } from '@hiveio/dhive';
 
-export async function GET() {
+// Use dhive Client directly in API routes (server-side)
+// This is the SERVER-SIDE implementation - it should NOT use HiveSocialAPI
+const HIVE_NODES = [
+  'https://api.hive.blog',
+  'https://api.openhive.network',
+  'https://hived.privex.io',
+  'https://rpc.ecency.com'
+];
+
+export async function GET(request: Request) {
   try {
-    console.log('Testing Hive Social API...');
+    console.log('Testing Hive API on server side...');
     
-    // Test trending posts
-    const trendingPosts = await hiveSocialAPI.getTrendingPosts('', 3);
+    // Create dhive client for server-side use ONLY
+    const client = new Client(HIVE_NODES[0], {
+      timeout: 15000,
+      failoverThreshold: 3,
+      consoleOnFailover: true
+    });
     
-    console.log('Trending posts response:', trendingPosts);
+    // Test trending posts using dhive directly
+    const query = {
+      tag: '',
+      limit: 3,
+      truncate_body: 1000
+    };
     
-    return NextResponse.json({
+    const trendingPosts = await client.database.call('get_discussions_by_trending', [query]);
+    
+    console.log('Trending posts response:', trendingPosts?.length || 0, 'posts');
+    
+    // Add CORS headers
+    const response = NextResponse.json({
       success: true,
-      message: 'Hive Social API working',
+      message: 'Hive API working on server side',
       data: {
         postsCount: trendingPosts?.length || 0,
-        posts: trendingPosts.map(post => ({
+        posts: trendingPosts?.slice(0, 3).map((post: any) => ({
           author: post.author,
           title: post.title,
           permlink: post.permlink,
-          payout: post.payout,
-          upvotes: post.upvotes
-        }))
+          created: post.created,
+          votes: post.active_votes?.length || 0
+        })) || []
       }
     });
     
-  } catch (error) {
-    console.error('Hive Social API test failed:', error);
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    return NextResponse.json({
+    return response;
+    
+  } catch (error) {
+    console.error('Hive API test failed:', error);
+    
+    // Add CORS headers to error response too
+    const errorResponse = NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*');
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    return errorResponse;
   }
+}
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(request: Request) {
+  const response = new NextResponse(null, { status: 204 });
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  return response;
 }

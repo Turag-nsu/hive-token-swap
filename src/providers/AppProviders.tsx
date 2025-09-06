@@ -5,7 +5,7 @@ import { QueryProvider } from './QueryProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { NotificationProvider } from './NotificationProvider';
 import { WalletProvider } from './WalletProvider';
-import { HiveSignerProvider } from './HiveSignerProvider';
+
 
 // Import hooks to re-export them
 import { useTheme, useThemeToggle, useDarkMode } from './ThemeProvider';
@@ -42,7 +42,6 @@ interface AppProvidersProps {
  * 2. ThemeProvider - Needed for notification theming
  * 3. NotificationProvider - Needed for wallet notifications
  * 4. WalletProvider - Uses notifications for user feedback
- * 5. HiveSignerProvider - For HiveSigner authentication
  */
 export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
   return (
@@ -50,9 +49,7 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
       <ThemeProvider>
         <NotificationProvider>
           <WalletProvider>
-            <HiveSignerProvider>
-              {children}
-            </HiveSignerProvider>
+            {children}
           </WalletProvider>
         </NotificationProvider>
       </ThemeProvider>

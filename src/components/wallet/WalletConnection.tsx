@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { useHiveSignerAuth } from '@/hooks/useHiveSigner';
+
 
 interface WalletConnectionProps {
   children: React.ReactNode;
@@ -28,17 +28,10 @@ export function WalletConnection({ children }: WalletConnectionProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [authMethod, setAuthMethod] = useState<'keychain' | 'hivesigner' | null>(null);
+  const [authMethod, setAuthMethod] = useState<'keychain' | null>(null);
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualUsername, setManualUsername] = useState('');
 
-  const {
-    user: hivesignerUser,
-    isAuthenticated: isHiveSignerAuthenticated,
-    isLoading: isHiveSignerLoading,
-    login: hivesignerLogin,
-    logout: hivesignerLogout
-  } = useHiveSignerAuth();
 
   useEffect(() => {
     // Check if HiveKeychain is installed
@@ -53,14 +46,6 @@ export function WalletConnection({ children }: WalletConnectionProps) {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    // Update state based on HiveSigner auth status
-    if (isHiveSignerAuthenticated && hivesignerUser) {
-      setIsConnected(true);
-      setUsername(hivesignerUser.user);
-      setAuthMethod('hivesigner');
-    }
-  }, [isHiveSignerAuthenticated, hivesignerUser]);
 
   const connectWithKeychain = async () => {
     if (!isKeychainInstalled) {
@@ -141,40 +126,21 @@ export function WalletConnection({ children }: WalletConnectionProps) {
     window.location.reload();
   };
 
-  const connectWithHiveSigner = () => {
-    setIsConnecting(true);
-    setError(null);
-    setAuthMethod('hivesigner');
-
-    try {
-      hivesignerLogin();
-      // The useEffect will handle the state update after login
-      // But we need to stop the connecting state here
-      setIsConnecting(false);
-    } catch {
-      setError('HiveSigner connection failed');
-      setIsConnecting(false);
-    }
-  };
 
   const disconnectWallet = () => {
-    if (authMethod === 'hivesigner') {
-      hivesignerLogout();
-    }
-
     setIsConnected(false);
     setUsername('');
     setAuthMethod(null);
     setError(null);
   };
 
-  if (!isKeychainInstalled && !isHiveSignerAuthenticated) {
+  if (!isKeychainInstalled) {
     return (
       <div className="space-y-4">
         <Alert>
           <Download className="h-4 w-4" />
           <AlertDescription>
-            HiveKeychain extension or HiveSigner is required to use this feature.
+            HiveKeychain extension is required to use this feature.
           </AlertDescription>
         </Alert>
 
@@ -196,14 +162,6 @@ export function WalletConnection({ children }: WalletConnectionProps) {
                 Install HiveKeychain
                 <ExternalLink className="h-4 w-4 ml-2" />
               </a>
-            </Button>
-
-            <Button
-              onClick={connectWithHiveSigner}
-              disabled={isConnecting || isHiveSignerLoading}
-            >
-              <Key className="h-4 w-4 mr-2" />
-              {isConnecting || isHiveSignerLoading ? 'Connecting...' : 'Use HiveSigner'}
             </Button>
           </div>
         </div>
@@ -268,14 +226,6 @@ export function WalletConnection({ children }: WalletConnectionProps) {
                 {isConnecting ? 'Connecting...' : 'Connect with Keychain'}
               </Button>
             )}
-
-            <Button
-              onClick={connectWithHiveSigner}
-              disabled={isConnecting || isHiveSignerLoading}
-            >
-              <Key className="h-4 w-4 mr-2" />
-              {isConnecting || isHiveSignerLoading ? 'Connecting...' : 'Connect with HiveSigner'}
-            </Button>
           </div>
         </div>
       </div>
@@ -290,7 +240,7 @@ export function WalletConnection({ children }: WalletConnectionProps) {
           <div>
             <div className="font-medium">Wallet Connected</div>
             <div className="text-sm text-muted-foreground">
-              @{username} via {authMethod === 'keychain' ? 'HiveKeychain' : 'HiveSigner'}
+              @{username} via HiveKeychain
             </div>
           </div>
         </div>

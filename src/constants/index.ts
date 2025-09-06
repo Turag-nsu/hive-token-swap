@@ -25,8 +25,6 @@ export const KEYCHAIN_CONFIG = {
   DOWNLOAD_URL: 'https://chrome.google.com/webstore/detail/hive-keychain/jcacnejopjdphbnjgfaaobbfafkihpep',
 } as const;
 
-// HiveSigner Configuration
-export { HIVESIGNER_CONFIG } from './hivesigner';
 
 // Default Token List
 export const DEFAULT_TOKENS = [

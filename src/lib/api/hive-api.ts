@@ -39,13 +39,28 @@ async function makeRPCCall<T>(method: string, params: any, endpoint: string = HI
   };
 
   try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    // Use fetch with proper context binding
+    let response: Response;
+    
+    if (typeof window !== 'undefined') {
+      // Client-side: bind fetch to window context
+      response = await fetch.call(window, endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+    } else {
+      // Server-side: use fetch directly
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

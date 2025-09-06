@@ -11,26 +11,69 @@ const HIVE_NODES = [
 
 // Custom fetch function to avoid "Illegal invocation" errors
 const customFetch = (url: string, options?: RequestInit): Promise<Response> => {
-  return fetch.call(window, url, options);
+  // Only use in browser environment
+  if (typeof window === 'undefined') {
+    throw new Error('HiveSocialAPI can only be used in browser environment');
+  }
+  
+  // Bind fetch to window context to avoid "Illegal invocation" errors
+  // This is the proper way to fix the fetch context issue
+  if (window.fetch && typeof window.fetch === 'function') {
+    // Check if already bound to avoid double-binding
+    if (!window.fetch.name || window.fetch.name !== 'bound fetch') {
+      const boundFetch = window.fetch.bind(window);
+      
+      // Mark as bound to prevent re-binding
+      Object.defineProperty(boundFetch, 'name', {
+        value: 'bound fetch',
+        configurable: true
+      });
+      
+      window.fetch = boundFetch;
+      return boundFetch(url, options);
+    }
+  }
+  
+  return fetch(url, options);
 };
 
 export class HiveSocialAPI {
-  private client: Client;
+  private client: Client | null = null;
   private currentNodeIndex: number = 0;
-  
+
   constructor() {
-    // Configure dhive client with proper fetch and timeout settings
-    this.client = new Client(HIVE_NODES[0], {
-      timeout: 15000,
-      failoverThreshold: 3,
-      consoleOnFailover: true,
-      // Use custom agent to avoid fetch context issues
-      agent: typeof window !== 'undefined' ? undefined : undefined
-    });
+    // Don't initialize client in constructor - use lazy initialization
+    if (typeof window !== 'undefined') {
+      this.initializeClient();
+    }
+  }
+
+  // Lazy initialization of the client
+  private initializeClient(): Client {
+    // Only initialize in browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+
+    if (!this.client) {
+      this.client = new Client(HIVE_NODES[0], {
+        timeout: 15000,
+        failoverThreshold: 3,
+        consoleOnFailover: true,
+        // Use custom agent to avoid fetch context issues
+        agent: undefined
+      });
+    }
+    return this.client;
   }
 
   // Switch to next available node
   private switchToNextNode(): void {
+    // Only execute in browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    
     this.currentNodeIndex = (this.currentNodeIndex + 1) % HIVE_NODES.length;
     const newNode = HIVE_NODES[this.currentNodeIndex];
     console.log(`🔄 Switching to node: ${newNode}`);
@@ -44,6 +87,11 @@ export class HiveSocialAPI {
 
   // Direct API call with custom fetch for Bridge API
   private async callBridgeAPI(method: string, params: any): Promise<any> {
+    // Only execute in browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+
     const body = {
       jsonrpc: '2.0',
       method: `bridge.${method}`,
@@ -65,7 +113,7 @@ export class HiveSocialAPI {
       }
 
       const data = await response.json();
-        
+
       if (data.error) {
         throw new Error(`API Error: ${data.error.message || JSON.stringify(data.error)}`);
       }
@@ -80,12 +128,20 @@ export class HiveSocialAPI {
 
   // Direct Condenser API call with failover support
   private async callCondenserAPI(method: string, params: any[] = []): Promise<any> {
+    // Only execute in browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+
     let lastError: Error | null = null;
-    
+
     for (let attempt = 0; attempt < HIVE_NODES.length; attempt++) {
       try {
+        // Initialize client if needed
+        const client = this.initializeClient();
+        
         // Use dhive's database API for better reliability
-        const result = await this.client.database.call(method, params);
+        const result = await client.database.call(method, params);
         console.log(`✅ API call successful: ${method} on ${HIVE_NODES[this.currentNodeIndex]}`);
         return result;
       } catch (error) {
@@ -106,21 +162,21 @@ export class HiveSocialAPI {
   async getPostWithVotesAndReplies(author: string, permlink: string): Promise<any> {
     try {
       console.log(`🔄 Fetching fresh post data for ${author}/${permlink}`);
-      
+
       // Get the fresh post content
       const post = await this.callCondenserAPI('get_content', [author, permlink]);
-      
+
       if (!post || !post.author) {
         throw new Error('Post not found');
       }
 
       // Get fresh replies
       const replies = await this.callCondenserAPI('get_content_replies', [author, permlink]);
-      
+
       // Add replies to post
       post.replies = replies || [];
       post.reply_count = replies ? replies.length : 0;
-      
+
       console.log(`✅ Fresh post data retrieved:`, {
         author: post.author,
         permlink: post.permlink,
@@ -128,7 +184,7 @@ export class HiveSocialAPI {
         netVotes: post.net_votes,
         replyCount: post.reply_count
       });
-      
+
       return post;
     } catch (error) {
       console.error(`Error fetching fresh post data for ${author}/${permlink}:`, error);
@@ -254,15 +310,15 @@ export class HiveSocialAPI {
         limit: limit,
         truncate_body: 1000
       };
-      
+
       if (startAuthor && startPermlink) {
         query.start_author = startAuthor;
         query.start_permlink = startPermlink;
       }
-      
+
       console.log('🚀 Calling condenser_api.get_discussions_by_trending with query:', query);
       const posts = await this.getDiscussionsByTrending(query);
-      
+
       console.log('📦 Received posts from Condenser API:', {
         count: posts?.length || 0,
         firstPost: posts?.[0] ? {
@@ -288,15 +344,15 @@ export class HiveSocialAPI {
         limit: limit,
         truncate_body: 1000
       };
-      
+
       if (startAuthor && startPermlink) {
         query.start_author = startAuthor;
         query.start_permlink = startPermlink;
       }
-      
+
       console.log('🚀 Calling condenser_api.get_discussions_by_created with query:', query);
       const posts = await this.getDiscussionsByCreated(query);
-      
+
       return (posts || []).map(this.transformCondenserToSocialFeedItem);
     } catch (error) {
       console.error('Error fetching recent posts:', error);
@@ -312,15 +368,15 @@ export class HiveSocialAPI {
         limit: limit,
         truncate_body: 1000
       };
-      
+
       if (startAuthor && startPermlink) {
         query.start_author = startAuthor;
         query.start_permlink = startPermlink;
       }
-      
+
       console.log('🚀 Calling condenser_api.get_discussions_by_hot with query:', query);
       const posts = await this.getDiscussionsByHot(query);
-      
+
       return (posts || []).map(this.transformCondenserToSocialFeedItem);
     } catch (error) {
       console.error('Error fetching hot posts:', error);
@@ -332,7 +388,7 @@ export class HiveSocialAPI {
   async getPostsByAuthor(author: string, limit: number = 20): Promise<SocialFeedItem[]> {
     try {
       const blog = await this.getBlog(author, 0, limit);
-      
+
       // Get full content for each blog entry
       const posts = await Promise.all(
         blog.map(async (entry: any) => {
@@ -371,7 +427,7 @@ export class HiveSocialAPI {
     try {
       console.log('🚀 Fetching comments for:', `${author}/${permlink}`);
       const replies = await this.getContentReplies(author, permlink);
-      
+
       console.log('📦 Received replies from Condenser API:', {
         count: replies?.length || 0,
         firstReply: replies?.[0] ? {
@@ -424,11 +480,11 @@ export class HiveSocialAPI {
   // Enhance posts with vote data
   private async enhancePostsWithVotes(posts: any[]): Promise<any[]> {
     console.log('🔍 Enhancing posts with vote data...');
-    
+
     // For now, let's enhance just the first few posts to avoid too many API calls
     const postsToEnhance = posts.slice(0, 5);
     const enhancedPosts = [];
-    
+
     for (const post of postsToEnhance) {
       if (!post.active_votes || post.active_votes.length === 0) {
         console.log(`📊 Getting vote data for ${post.author}/${post.permlink}`);
@@ -443,10 +499,10 @@ export class HiveSocialAPI {
         enhancedPosts.push(post);
       }
     }
-    
+
     // Add the remaining posts without enhancement
     enhancedPosts.push(...posts.slice(5));
-    
+
     return enhancedPosts;
   }
   async getUserAccount(username: string): Promise<any> {
@@ -455,7 +511,7 @@ export class HiveSocialAPI {
       const result = await this.client.call('database_api', 'find_accounts', {
         accounts: [username]
       });
-      
+
       return result?.accounts?.[0] || null;
     } catch (error) {
       console.error('Error fetching user account via find_accounts, trying fallback:', error);
@@ -481,7 +537,7 @@ export class HiveSocialAPI {
 
       const account = accounts[0];
       let metadata: any = {};
-      
+
       try {
         // Parse posting_json_metadata first, then fallback to json_metadata
         const metadataSource = account.posting_json_metadata || account.json_metadata || '{}';
@@ -562,11 +618,16 @@ export class HiveSocialAPI {
 
   // Vote on a post via Hive Keychain
   async votePost(voteData: VoteData): Promise<boolean> {
+    // Only execute in browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+
     return new Promise((resolve, reject) => {
       console.log('🗳️ Submitting vote via HiveKeychain:', voteData);
 
       // Check if HiveKeychain is available
-      if (typeof window === 'undefined' || !(window as any).hive_keychain) {
+      if (!(window as any).hive_keychain) {
         reject(new Error('HiveKeychain not installed or not available'));
         return;
       }
@@ -593,7 +654,7 @@ export class HiveSocialAPI {
         'Posting',
         (response: any) => {
           console.log('🔗 HiveKeychain response:', response);
-          
+
           if (response.success) {
             console.log('✅ Vote broadcast successful!', response);
             resolve(true);
@@ -650,10 +711,10 @@ export class HiveSocialAPI {
       // Condenser API provides active_votes with percent values
       upvotes = post.active_votes.filter((vote: any) => vote.percent > 0).length;
       downvotes = post.active_votes.filter((vote: any) => vote.percent < 0).length;
-      
-      console.log('📊 Condenser vote data:', { 
-        upvotes, 
-        downvotes, 
+
+      console.log('📊 Condenser vote data:', {
+        upvotes,
+        downvotes,
         totalVotes: post.active_votes.length,
         sampleVotes: post.active_votes.slice(0, 3).map(v => ({ voter: v.voter, percent: v.percent }))
       });
@@ -741,16 +802,16 @@ export class HiveSocialAPI {
         // Check for positive rshares (upvotes) or positive percent
         return (vote.rshares && vote.rshares > 0) || (vote.percent && vote.percent > 0);
       }).length;
-      
+
       downvotes = post.active_votes.filter((vote: any) => {
         // Check for negative rshares (downvotes) or negative percent  
         return (vote.rshares && vote.rshares < 0) || (vote.percent && vote.percent < 0);
       }).length;
-      
+
       voteSource = 'active_votes';
-      console.log('📊 Vote data from active_votes:', { 
-        upvotes, 
-        downvotes, 
+      console.log('📊 Vote data from active_votes:', {
+        upvotes,
+        downvotes,
         totalVotes: post.active_votes.length,
         sampleVotes: post.active_votes.slice(0, 3).map(v => ({ voter: v.voter, rshares: v.rshares, percent: v.percent }))
       });
@@ -800,13 +861,13 @@ export class HiveSocialAPI {
   private calculateReputation(rawReputation: string | number): number {
     const rep = typeof rawReputation === 'string' ? parseInt(rawReputation) : rawReputation;
     if (rep === 0) return 25;
-    
+
     const neg = rep < 0;
     let reputationLevel = Math.log10(Math.abs(rep));
     reputationLevel = Math.max(reputationLevel - 9, 0);
     reputationLevel = (neg ? -1 : 1) * reputationLevel;
     reputationLevel = reputationLevel * 9 + 25;
-    
+
     return Math.round(reputationLevel);
   }
 
@@ -818,7 +879,7 @@ export class HiveSocialAPI {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
-    
+
     const timestamp = Date.now().toString();
     return slug ? `${slug}-${timestamp}` : `post-${timestamp}`;
   }
@@ -832,7 +893,8 @@ export class HiveSocialAPI {
   // Get global properties
   async getGlobalProperties() {
     try {
-      return await this.client.database.getDynamicGlobalProperties();
+      const client = this.initializeClient();
+      return await client.database.getDynamicGlobalProperties();
     } catch (error) {
       console.error('Error fetching global properties:', error);
       throw error;
@@ -850,5 +912,252 @@ export class HiveSocialAPI {
   }
 }
 
-// Create singleton instance
-export const hiveSocialAPI = new HiveSocialAPI();
+// Create singleton instance with lazy initialization
+let hiveSocialAPIInstance: HiveSocialAPI | null = null;
+
+// Enhanced singleton with window check
+export const hiveSocialAPI = {
+  getInstance(): HiveSocialAPI {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+
+    if (!hiveSocialAPIInstance) {
+      hiveSocialAPIInstance = new HiveSocialAPI();
+    }
+    return hiveSocialAPIInstance;
+  },
+
+  // Proxy all methods to the singleton instance with window checks
+  async getPostWithVotesAndReplies(author: string, permlink: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getPostWithVotesAndReplies(author, permlink);
+  },
+
+  async getContent(author: string, permlink: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getContent(author, permlink);
+  },
+
+  async getContentReplies(author: string, permlink: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getContentReplies(author, permlink);
+  },
+
+  async getActiveVotes(author: string, permlink: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getActiveVotes(author, permlink);
+  },
+
+  async getDiscussionsByTrending(query: any) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getDiscussionsByTrending(query);
+  },
+
+  async getDiscussionsByCreated(query: any) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getDiscussionsByCreated(query);
+  },
+
+  async getDiscussionsByHot(query: any) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getDiscussionsByHot(query);
+  },
+
+  async getAccounts(accountNames: string[]) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getAccounts(accountNames);
+  },
+
+  async getDynamicGlobalProperties() {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getDynamicGlobalProperties();
+  },
+
+  async getTrendingPosts(tag?: string, limit?: number, startAuthor?: string, startPermlink?: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getTrendingPosts(tag, limit, startAuthor, startPermlink);
+  },
+
+  async getRecentPosts(tag?: string, limit?: number, startAuthor?: string, startPermlink?: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getRecentPosts(tag, limit, startAuthor, startPermlink);
+  },
+
+  async getHotPosts(tag?: string, limit?: number, startAuthor?: string, startPermlink?: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getHotPosts(tag, limit, startAuthor, startPermlink);
+  },
+
+  async getPostsByAuthor(author: string, limit?: number) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getPostsByAuthor(author, limit);
+  },
+
+  async getPost(author: string, permlink: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getPost(author, permlink);
+  },
+
+  async getCommentDiscussions(author: string, permlink: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getCommentDiscussions(author, permlink);
+  },
+
+  async getPostWithComments(author: string, permlink: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getPostWithComments(author, permlink);
+  },
+
+  async getFeedHistory() {
+    return this.getInstance().getFeedHistory();
+  },
+
+  async getCurrentMedianHistoryPrice() {
+    return this.getInstance().getCurrentMedianHistoryPrice();
+  },
+
+  async getConversionRequests(account: string) {
+    return this.getInstance().getConversionRequests(account);
+  },
+
+  async getOrderBook(limit?: number) {
+    return this.getInstance().getOrderBook(limit);
+  },
+
+  async getOpenOrders(account: string) {
+    return this.getInstance().getOpenOrders(account);
+  },
+
+  async getLiquidityQueue(account: string, limit?: number) {
+    return this.getInstance().getLiquidityQueue(account, limit);
+  },
+
+  async getSavingsWithdrawFrom(account: string) {
+    return this.getInstance().getSavingsWithdrawFrom(account);
+  },
+
+  async getSavingsWithdrawTo(account: string) {
+    return this.getInstance().getSavingsWithdrawTo(account);
+  },
+
+  async getVestingDelegations(account: string, from?: string, limit?: number) {
+    return this.getInstance().getVestingDelegations(account, from, limit);
+  },
+
+  async getExpiringVestingDelegations(account: string, from?: string, limit?: number) {
+    return this.getInstance().getExpiringVestingDelegations(account, from, limit);
+  },
+
+  async getEscrow(from: string, escrowId: number) {
+    return this.getInstance().getEscrow(from, escrowId);
+  },
+
+  async getWithdrawRoutes(account: string, type?: 'incoming' | 'outgoing' | 'all') {
+    return this.getInstance().getWithdrawRoutes(account, type);
+  },
+
+  async getAccountBandwidth(account: string, type?: 'market' | 'forum' | 'post') {
+    return this.getInstance().getAccountBandwidth(account, type);
+  },
+
+  async getFeed(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
+    return this.getInstance().getFeed(accountName, limit, startAuthor, startPermlink);
+  },
+
+  async getBlog(author: string, startEntryId?: number, limit?: number) {
+    return this.getInstance().getBlog(author, startEntryId, limit);
+  },
+
+  async getAccountPosts(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
+    return this.getInstance().getAccountPosts(accountName, limit, startAuthor, startPermlink);
+  },
+
+  async getAccountComments(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
+    return this.getInstance().getAccountComments(accountName, limit, startAuthor, startPermlink);
+  },
+
+  async getAccountReplies(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
+    return this.getInstance().getAccountReplies(accountName, limit, startAuthor, startPermlink);
+  },
+
+  async getTrendingTags(afterTag?: string, limit?: number) {
+    return this.getInstance().getTrendingTags(afterTag, limit);
+  },
+
+  async getDiscussions(sortBy: string, query: any) {
+    return this.getInstance().getDiscussions(sortBy, query);
+  },
+
+  async getState(path: string) {
+    return this.getInstance().getState(path);
+  },
+
+  async getMarketHistory(bucketSeconds: number, start: string, end: string) {
+    return this.getInstance().getMarketHistory(bucketSeconds, start, end);
+  },
+
+  async getMarketHistoryBuckets() {
+    return this.getInstance().getMarketHistoryBuckets();
+  },
+
+  parseReputation(rawReputation: number | string) {
+    return this.getInstance().parseReputation(rawReputation);
+  },
+
+  generatePermlink(title: string) {
+    return this.getInstance().generatePermlink(title);
+  },
+
+  formatHiveAmount(amount: string) {
+    return this.getInstance().formatHiveAmount(amount);
+  },
+
+  async getGlobalProperties() {
+    return this.getInstance().getGlobalProperties();
+  },
+
+  hasUserVoted(post: any, username: string) {
+    return this.getInstance().hasUserVoted(post, username);
+  },
+
+  transformCondenserToSocialFeedItem(post: any) {
+    return this.getInstance().transformCondenserToSocialFeedItem(post);
+  },
+
+  transformUserProfile(account: any) {
+    return this.getInstance().transformUserProfile(account);
+  }
+};

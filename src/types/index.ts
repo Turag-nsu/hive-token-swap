@@ -1,7 +1,7 @@
 // Centralized type exports
 
 export * from './hive';
-export * from './hivesigner';
+
 export * from './app';
 
 // Re-export commonly used types
