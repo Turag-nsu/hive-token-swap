@@ -1,9 +1,10 @@
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils';
+import { useTheme } from '@/providers/ThemeProvider';
 
 const inputVariants = cva(
-  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 futuristic-input',
   {
     variants: {
       variant: {
@@ -52,6 +53,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     id,
     ...props 
   }, ref) => {
+    const { computedTheme } = useTheme();
     // Always call useId at the top level
     const generatedId = React.useId();
     const inputId = id || generatedId;
@@ -68,6 +70,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         'pl-10': startIcon || startAdornment,
         'pr-10': endIcon || endAdornment,
       },
+      computedTheme === 'dark' ? 'border-border/30 bg-background/60' : 'border-border/60 bg-background/80',
       className
     )}
     ref={ref}
@@ -114,7 +117,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {label && (
             <label 
               htmlFor={inputId}
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 font-futuristic"
             >
               {label}
             </label>

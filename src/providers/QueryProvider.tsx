@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { NETWORK_CONFIG } from '@/constants';
+import { toast } from 'sonner';
 
 // Global error handler
 const handleError = (error: unknown, context?: string) => {
@@ -29,7 +30,12 @@ const handleError = (error: unknown, context?: string) => {
   );
   
   if (!shouldSuppress && typeof window !== 'undefined') {
-    // You can integrate with your notification system here
+    // Show user-friendly toast notifications
+    toast.error(`Error: ${message}`, {
+      duration: 5000,
+      position: 'bottom-right',
+    });
+    
     console.error('Query/Mutation error:', message, context);
   }
   
@@ -42,7 +48,29 @@ const handleError = (error: unknown, context?: string) => {
   });
 };
 
-// Create query client factory
+// Performance monitoring
+const logQueryPerformance = (queryKey: string[], duration: number) => {
+  console.debug(`Query performance: ${queryKey.join(' > ')} took ${duration}ms`);
+  
+  // In production, you might want to send this to an analytics service
+  if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
+    // Example: send to analytics service
+    // analytics.track('query_performance', { queryKey, duration });
+  }
+};
+
+// Cache hit/miss tracking
+const logCacheEvent = (queryKey: string[], eventType: 'hit' | 'miss') => {
+  console.debug(`Cache ${eventType}: ${queryKey.join(' > ')}`);
+  
+  // In production, you might want to send this to an analytics service
+  if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
+    // Example: send to analytics service
+    // analytics.track(`cache_${eventType}`, { queryKey });
+  }
+};
+
+// Create query client factory with enhanced error handling
 const createQueryClient = () => {
   return new QueryClient({
     defaultOptions: {
@@ -64,26 +92,70 @@ const createQueryClient = () => {
               return false;
             }
           }
+          
+          // Exponential backoff retry strategy
+          if (failureCount < NETWORK_CONFIG.MAX_RETRIES) {
+            // Show retry toast for user feedback
+            if (typeof window !== 'undefined') {
+              toast.info(`Retrying... (${failureCount + 1}/${NETWORK_CONFIG.MAX_RETRIES})`, {
+                duration: 2000,
+                position: 'bottom-right',
+              });
+            }
+          }
+          
           return failureCount < NETWORK_CONFIG.MAX_RETRIES;
         },
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
         refetchOnWindowFocus: false,
         refetchOnReconnect: true,
         refetchOnMount: true,
+        // Add network mode for better offline handling
+        networkMode: 'online',
+        // Add performance tracking
+        meta: {
+          timing: true,
+        },
       },
       mutations: {
         retry: 1,
         retryDelay: NETWORK_CONFIG.RETRY_DELAY,
+        // Add network mode for better offline handling
+        networkMode: 'online',
       },
     },
     queryCache: new QueryCache({
       onError: (error, query) => {
         handleError(error, `Query: ${query.queryKey.join(' > ')}`);
       },
+      onSuccess: (data, query) => {
+        // Log successful queries for debugging
+        console.debug('Query success:', {
+          queryKey: query.queryKey.join(' > '),
+          data,
+          timestamp: new Date().toISOString(),
+        });
+      },
+      onSettled: (data, error, query) => {
+        // Log query performance
+        if (query.meta?.timing) {
+          const duration = Date.now() - query.state.dataUpdatedAt;
+          logQueryPerformance(query.queryKey, duration);
+        }
+      },
     }),
     mutationCache: new MutationCache({
       onError: (error, variables, context, mutation) => {
         handleError(error, `Mutation: ${mutation.options.mutationKey?.join(' > ') || 'unknown'}`);
+      },
+      onSuccess: (data, variables, context, mutation) => {
+        // Log successful mutations for debugging
+        console.debug('Mutation success:', {
+          mutationKey: mutation.options.mutationKey?.join(' > ') || 'unknown',
+          data,
+          variables,
+          timestamp: new Date().toISOString(),
+        });
       },
     }),
   });

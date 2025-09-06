@@ -1,5 +1,6 @@
 import { KeychainSDK } from 'keychain-sdk';
 import type { Operation } from '@/types';
+import { OperationBuilder } from './operations';
 
 interface KeychainRequest {
   username: string;
@@ -214,6 +215,154 @@ class KeychainManager {
     }
   }
 
+  /**
+   * Follow a user on Hive
+   */
+  async followUser(follower: string, following: string): Promise<any> {
+    console.log(`[KeychainManager] followUser called: ${follower} -> ${following}`);
+    
+    if (!this.keychain) {
+      throw new Error('HiveKeychain SDK not initialized');
+    }
+
+    const installed = await this.isInstalled();
+    if (!installed) {
+      throw new Error('HiveKeychain extension not installed');
+    }
+
+    // Create the follow operation
+    const followOp: Operation = [
+      'custom_json',
+      {
+        required_auths: [],
+        required_posting_auths: [follower],
+        id: 'follow',
+        json: JSON.stringify([
+          'follow',
+          {
+            follower,
+            following,
+            what: ['blog'] // Follow type
+          }
+        ])
+      }
+    ];
+
+    try {
+      // Try using the direct window.hive_keychain API if SDK doesn't work
+      if (typeof window !== 'undefined' && (window as any).hive_keychain) {
+        console.log('[KeychainManager] Using direct window.hive_keychain API for follow');
+        
+        return new Promise((resolve, reject) => {
+          (window as any).hive_keychain.requestBroadcast(
+            follower,
+            [followOp],
+            'Posting',
+            (response: any) => {
+              console.log('[KeychainManager] Direct API follow response:', response);
+              if (response.success) {
+                resolve(response);
+              } else {
+                reject(new Error(response.message || 'Follow operation failed'));
+              }
+            }
+          );
+        });
+      }
+
+      // Fallback to SDK
+      console.log('[KeychainManager] Using KeychainSDK for follow');
+      const result = await this.keychain.broadcast({
+        username: follower,
+        operations: [followOp],
+        method: 'posting'
+      });
+
+      if (result.success) {
+        return result.result;
+      } else {
+        throw new Error(result.message || 'Follow operation failed');
+      }
+    } catch (error) {
+      console.error('[KeychainManager] Follow error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unfollow a user on Hive
+   */
+  async unfollowUser(follower: string, following: string): Promise<any> {
+    console.log(`[KeychainManager] unfollowUser called: ${follower} -> ${following}`);
+    
+    if (!this.keychain) {
+      throw new Error('HiveKeychain SDK not initialized');
+    }
+
+    const installed = await this.isInstalled();
+    if (!installed) {
+      throw new Error('HiveKeychain extension not installed');
+    }
+
+    // Create the unfollow operation (same as follow but with empty what array)
+    const unfollowOp: Operation = [
+      'custom_json',
+      {
+        required_auths: [],
+        required_posting_auths: [follower],
+        id: 'follow',
+        json: JSON.stringify([
+          'follow',
+          {
+            follower,
+            following,
+            what: [] // Empty array means unfollow
+          }
+        ])
+      }
+    ];
+
+    try {
+      // Try using the direct window.hive_keychain API if SDK doesn't work
+      if (typeof window !== 'undefined' && (window as any).hive_keychain) {
+        console.log('[KeychainManager] Using direct window.hive_keychain API for unfollow');
+        
+        return new Promise((resolve, reject) => {
+          (window as any).hive_keychain.requestBroadcast(
+            follower,
+            [unfollowOp],
+            'Posting',
+            (response: any) => {
+              console.log('[KeychainManager] Direct API unfollow response:', response);
+              if (response.success) {
+                resolve(response);
+              } else {
+                reject(new Error(response.message || 'Unfollow operation failed'));
+              }
+            }
+          );
+        });
+      }
+
+      // Fallback to SDK
+      console.log('[KeychainManager] Using KeychainSDK for unfollow');
+      const result = await this.keychain.broadcast({
+        username: follower,
+        operations: [unfollowOp],
+        method: 'posting'
+      });
+
+      if (result.success) {
+        return result.result;
+      } else {
+        throw new Error(result.message || 'Unfollow operation failed');
+      }
+    } catch (error) {
+      console.error('[KeychainManager] Unfollow error:', error);
+      throw error;
+    }
+  }
+
   forceDetection(): void {
     console.log('[KeychainManager] Forcing keychain detection');
     this.initializeKeychain();
@@ -236,11 +385,18 @@ export const forceKeychainDetection = () => {
   keychain.forceDetection();
 };
 
+// Export types
+export type { KeychainRequest, TransactionData };
+
+// Create a hiveKeychainAPI object for backward compatibility
+export const hiveKeychainAPI = {
+  followUser: keychain.followUser.bind(keychain),
+  unfollowUser: keychain.unfollowUser.bind(keychain)
+};
+
 // Cleanup on page unload
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     keychain.destroy();
   });
 }
-
-export type { KeychainRequest, TransactionData };

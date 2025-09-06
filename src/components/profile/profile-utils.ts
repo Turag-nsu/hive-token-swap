@@ -1,10 +1,3 @@
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
 // Extract the first image URL from post body
 export function extractImageFromBody(body: string): string | null {
   // Look for markdown image syntax ![alt](url)

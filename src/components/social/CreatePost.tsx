@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
-import { useAuthStore } from '@/stores/auth';
+import { useUser } from '@/hooks/useUser';
 import { useSocialStore } from '@/stores/social';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
 import { PenTool, Hash, X, Send, Image, Smile } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function CreatePost() {
-    const { isAuthenticated, username } = useAuthStore();
+    const { isAuthenticated, username } = useUser();
     const { clearFeed } = useSocialStore();
     const [isExpanded, setIsExpanded] = useState(false);
     const [isPosting, setIsPosting] = useState(false);

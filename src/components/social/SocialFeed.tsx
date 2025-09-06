@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useSocialStore } from '@/stores/social';
-import { useAuthStore } from '@/stores/auth';
-import { hiveSocialAPI } from '@/lib/api/hive-social';
+import { useUser } from '@/hooks/useUser';
 import { SocialFeedItem } from '@/types/social';
 import {
     Heart,
@@ -19,107 +17,62 @@ import {
     User,
     Hash,
     RefreshCw,
-    Filter
+    Filter,
+    MoreHorizontal,
+    UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { useInView } from 'react-intersection-observer';
+import { useSocialFeed, useVotePost, usePrefetchPost } from '@/hooks/useSocialFeed';
+import { CommentModal } from './CommentModal';
+import Link from 'next/link';
+import { hiveKeychainAPI } from '@/lib/blockchain/keychain';
+
+// Add this interface for following state
+interface FollowingState {
+  [author: string]: boolean;
+}
 
 export function SocialFeed() {
-    const {
-        feed,
-        isLoading,
-        hasMore,
-        filters,
-        setFeed,
-        addToFeed,
-        setLoading,
-        setHasMore,
-        setFilters,
-        updatePost
-    } = useSocialStore();
-
-    const { isAuthenticated, username } = useAuthStore();
-    const [isVoting, setIsVoting] = useState<string | null>(null);
+    const { isAuthenticated, username, refreshUser } = useUser();
     const [showFilters, setShowFilters] = useState(false);
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
+    const [showCommentModal, setShowCommentModal] = useState(false);
+    const [selectedPost, setSelectedPost] = useState<SocialFeedItem | null>(null);
+    const [following, setFollowing] = useState<FollowingState>({});
+    
+    // Use our new React Query hook for the social feed
+    const { 
+        data, 
+        fetchNextPage, 
+        hasNextPage, 
+        isFetchingNextPage, 
+        isLoading,
+        refetch,
+        isError,
+        error
+    } = useSocialFeed({ sortBy: 'created', limit: 20 });
+    
+    // Use our new React Query mutation for voting
+    const { mutate: votePost, isPending: isVoting } = useVotePost();
+    
+    // Use prefetching for better UX
+    const prefetchPost = usePrefetchPost();
+    
+    // Flatten the pages into a single array of posts
+    const feed = data?.pages.flatMap(page => page) || [];
 
-    // Load initial feed
-    useEffect(() => {
-        const loadInitialFeed = async () => {
-            setLoading(true);
-            try {
-                let posts: SocialFeedItem[] = [];
-
-                if (filters.sortBy === 'trending') {
-                    posts = await hiveSocialAPI.getTrendingPosts(
-                        filters.tag || '',
-                        filters.limit
-                    );
-                } else {
-                    posts = await hiveSocialAPI.getRecentPosts(
-                        filters.tag || '',
-                        filters.limit
-                    );
-                }
-
-                setFeed(posts);
-                setHasMore(posts.length === filters.limit);
-            } catch (error) {
-                console.error('Error loading feed:', error);
-                toast.error('Failed to load posts');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadInitialFeed();
-    }, [filters, setFeed, setLoading, setHasMore]);
-
-    const loadFeed = useCallback(async (reset: boolean = false) => {
-        setLoading(true);
-        try {
-            let startAuthor: string | undefined;
-            let startPermlink: string | undefined;
-
-            if (!reset && feed.length > 0) {
-                const lastPost = feed[feed.length - 1];
-                startAuthor = lastPost.author;
-                startPermlink = lastPost.permlink;
-            }
-
-            let posts: SocialFeedItem[] = [];
-
-            if (filters.sortBy === 'trending') {
-                posts = await hiveSocialAPI.getTrendingPosts(
-                    filters.tag || '',
-                    filters.limit,
-                    startAuthor,
-                    startPermlink
-                );
-            } else {
-                posts = await hiveSocialAPI.getRecentPosts(
-                    filters.tag || '',
-                    filters.limit,
-                    startAuthor,
-                    startPermlink
-                );
-            }
-
-            if (reset) {
-                setFeed(posts);
-            } else {
-                addToFeed(posts);
-            }
-
-            setHasMore(posts.length === filters.limit);
-        } catch (error) {
-            console.error('Error loading feed:', error);
-            toast.error('Failed to load posts');
-        } finally {
-            setLoading(false);
+    // Auto-fetch next page when reaching the bottom
+    const { ref: loadMoreRef, inView } = useInView();
+    
+    // Fetch next page when in view
+    useCallback(() => {
+        if (inView && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
         }
-    }, [feed, filters, setFeed, addToFeed, setLoading, setHasMore]);
+    }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])();
 
     const handleVote = async (post: SocialFeedItem, weight: number) => {
         if (!isAuthenticated || !username) {
@@ -127,13 +80,13 @@ export function SocialFeed() {
             return;
         }
 
-        if (isVoting) {
+        // Add confirmation for votes
+        const voteType = weight > 0 ? 'upvote' : 'downvote';
+        const confirmed = window.confirm(`Do you want to ${voteType} this post by @${post.author}?`);
+
+        if (!confirmed) {
             return;
         }
-
-        setIsVoting(post.id);
-
-        const voteType = weight > 0 ? 'upvote' : 'downvote';
 
         console.log('🗳️ Voting on post:', {
             voter: username,
@@ -143,56 +96,25 @@ export function SocialFeed() {
             postTitle: post.title
         });
 
-        try {
-            await hiveSocialAPI.votePost({
-                voter: username,
-                author: post.author,
-                permlink: post.permlink,
-                weight: weight
-            });
-
-            console.log('✅ Vote successful:', { voteType });
-            toast.success(`${voteType.charAt(0).toUpperCase() + voteType.slice(1)} successful!`);
-
-            // Optimistic UI update - immediately update the vote count
-            const newUpvotes = weight > 0 ? post.upvotes + 1 : post.upvotes;
-            const newDownvotes = weight < 0 ? post.downvotes + 1 : post.downvotes;
-
-            updatePost(post.id, {
-                upvotes: newUpvotes,
-                downvotes: newDownvotes,
-                isUpvoted: weight > 0,
-                isDownvoted: weight < 0
-            });
-
-            // Optional: Try to refresh data after a delay, but don't fail if it doesn't work
-            setTimeout(async () => {
-                try {
-                    console.log('🔄 Attempting to refresh post data...');
-                    const updatedPost = await hiveSocialAPI.getPostWithVotesAndReplies(post.author, post.permlink);
-                    if (updatedPost) {
-                        const refreshedPost = hiveSocialAPI.transformCondenserToSocialFeedItem(updatedPost);
-                        updatePost(post.id, {
-                            upvotes: refreshedPost.upvotes,
-                            downvotes: refreshedPost.downvotes,
-                            replies: refreshedPost.replies,
-                            isUpvoted: refreshedPost.isUpvoted,
-                            isDownvoted: refreshedPost.isDownvoted
-                        });
-                        console.log('🔄 Post data refreshed successfully');
-                    }
-                } catch (refreshError) {
-                    // Don't show error to user for refresh failure - optimistic update is sufficient
-                    console.log('ℹ️ Post refresh failed (using optimistic data):', refreshError);
-                }
-            }, 3000); // Wait 3 seconds for blockchain confirmation
-
-        } catch (error: any) {
-            console.error('❌ Error voting:', error);
-            toast.error(error.message || `Failed to ${voteType}`);
-        } finally {
-            setIsVoting(null);
-        }
+        // Use React Query mutation for voting
+        votePost({
+            voter: username,
+            author: post.author,
+            permlink: post.permlink,
+            weight: weight
+        }, {
+            onSuccess: async () => {
+                console.log('✅ Vote successful:', { voteType });
+                toast.success(`${voteType.charAt(0).toUpperCase() + voteType.slice(1)} successful!`);
+                
+                // Revalidate user profile to update voting power
+                await refreshUser();
+            },
+            onError: (error: any) => {
+                console.error('❌ Error voting:', error);
+                toast.error(error.message || `Failed to ${voteType}`);
+            }
+        });
     };
 
     const handleReply = (post: SocialFeedItem) => {
@@ -202,8 +124,9 @@ export function SocialFeed() {
         }
 
         console.log('💬 Reply to post:', post.id);
-        setReplyingTo(post.id);
-        toast.info('Reply functionality coming soon!');
+        // Set the selected post and show the comment modal
+        setSelectedPost(post);
+        setShowCommentModal(true);
     };
 
     const handleShare = (post: SocialFeedItem) => {
@@ -226,6 +149,49 @@ export function SocialFeed() {
             // Fallback: copy to clipboard
             copyToClipboard(shareUrl);
         }
+    };
+
+    const handleFollow = async (author: string) => {
+        if (!isAuthenticated || !username) {
+            toast.error('Please log in to follow users');
+            return;
+        }
+
+        // Check if already following
+        const isFollowing = following[author] || false;
+        
+        try {
+            if (isFollowing) {
+                // Unfollow
+                await hiveKeychainAPI.unfollowUser(username, author);
+                setFollowing(prev => ({ ...prev, [author]: false }));
+                toast.success(`Unfollowed @${author}`);
+            } else {
+                // Follow
+                await hiveKeychainAPI.followUser(username, author);
+                setFollowing(prev => ({ ...prev, [author]: true }));
+                toast.success(`Following @${author}`);
+            }
+        } catch (error) {
+            console.error('Error following/unfollowing user:', error);
+            toast.error('Failed to follow/unfollow user');
+        }
+    };
+
+    const handleMessage = (author: string) => {
+        if (!isAuthenticated || !username) {
+            toast.error('Please log in to send messages');
+            return;
+        }
+
+        // For now, we'll just show a toast
+        // In a real implementation, this would open a messaging interface
+        toast.info(`Messaging functionality for @${author} would open here`);
+    };
+
+    const handleMore = (post: SocialFeedItem) => {
+        // Show more options for the post
+        toast.info('More options would appear here');
     };
 
     const copyToClipboard = (text: string) => {
@@ -253,7 +219,65 @@ export function SocialFeed() {
         return match ? match[1] : null;
     };
 
-    if (feed.length === 0 && !isLoading) {
+    if (isLoading) {
+        return (
+            <div className="space-y-4">
+                {/* Loading skeletons */}
+                {[...Array(3)].map((_, i) => (
+                    <Card key={i} className="overflow-hidden">
+                        <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 bg-muted rounded-full animate-pulse"></div>
+                                    <div>
+                                        <div className="h-4 w-24 bg-muted rounded animate-pulse mb-2"></div>
+                                        <div className="h-3 w-32 bg-muted rounded animate-pulse"></div>
+                                    </div>
+                                </div>
+                                <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="h-6 w-3/4 bg-muted rounded animate-pulse"></div>
+                            <div className="h-4 w-full bg-muted rounded animate-pulse"></div>
+                            <div className="h-4 w-full bg-muted rounded animate-pulse"></div>
+                            <div className="h-4 w-2/3 bg-muted rounded animate-pulse"></div>
+                            <div className="flex items-center justify-between pt-3 border-t">
+                                <div className="flex items-center space-x-4">
+                                    <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
+                                    <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
+                                    <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
+                                </div>
+                                <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <Card>
+                <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
+                        <MessageCircle className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="font-semibold mb-2">Error loading posts</h3>
+                    <p className="text-muted-foreground mb-4">
+                        {error?.message || 'Failed to load posts. Please try again.'}
+                    </p>
+                    <Button onClick={() => refetch()}>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Retry
+                    </Button>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (feed.length === 0) {
         return (
             <Card>
                 <CardContent className="p-8 text-center">
@@ -264,7 +288,7 @@ export function SocialFeed() {
                     <p className="text-muted-foreground mb-4">
                         Be the first to share something with the community!
                     </p>
-                    <Button onClick={() => loadFeed(true)}>
+                    <Button onClick={() => refetch()}>
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Refresh Feed
                     </Button>
@@ -292,7 +316,7 @@ export function SocialFeed() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => loadFeed(true)}
+                                onClick={() => refetch()}
                                 disabled={isLoading}
                             >
                                 <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -304,17 +328,17 @@ export function SocialFeed() {
                     {showFilters && (
                         <div className="flex flex-wrap gap-2 pt-3 border-t">
                             <Button
-                                variant={filters.sortBy === 'created' ? 'default' : 'outline'}
+                                variant={'default'}
                                 size="sm"
-                                onClick={() => setFilters({ sortBy: 'created' })}
+                                // onClick={() => setFilters({ sortBy: 'created' })}
                             >
                                 <Clock className="w-4 h-4 mr-1" />
                                 Recent
                             </Button>
                             <Button
-                                variant={filters.sortBy === 'trending' ? 'default' : 'outline'}
+                                variant={'outline'}
                                 size="sm"
-                                onClick={() => setFilters({ sortBy: 'trending' })}
+                                // onClick={() => setFilters({ sortBy: 'trending' })}
                             >
                                 <ChevronUp className="w-4 h-4 mr-1" />
                                 Trending
@@ -328,17 +352,24 @@ export function SocialFeed() {
             <div className="space-y-4">
                 {feed.map((post) => {
                     const postImage = extractImageFromBody(post.body);
+                    const isFollowingAuthor = following[post.author] || false;
 
                     return (
-                        <Card key={post.id} className="overflow-hidden">
+                        <Card 
+                          key={post.id} 
+                          className="overflow-hidden glass border border-border/30 hover:shadow-lg transition-all duration-300"
+                          onMouseEnter={() => prefetchPost(post.author, post.permlink)}
+                        >
                             <CardHeader className="pb-3">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                            <User className="w-5 h-5 text-primary" />
+                                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                                            <User className="w-5 h-5 text-white" />
                                         </div>
                                         <div>
-                                            <div className="font-semibold">@{post.author}</div>
+                                            <Link href={`/profile/${post.author}`} className="font-semibold hover:text-primary transition-colors">
+                                                @{post.author}
+                                            </Link>
                                             <div className="text-sm text-muted-foreground flex items-center gap-2">
                                                 <span>Rep {post.reputation}</span>
                                                 <span>•</span>
@@ -346,9 +377,30 @@ export function SocialFeed() {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="text-sm text-muted-foreground flex items-center">
-                                        <DollarSign className="w-4 h-4 mr-1" />
-                                        {post.payout}
+                                    <div className="flex items-center space-x-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleFollow(post.author)}
+                                            className={isFollowingAuthor ? "text-blue-500" : ""}
+                                        >
+                                            <UserPlus className="w-4 h-4 mr-1" />
+                                            {isFollowingAuthor ? "Following" : "Follow"}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleMessage(post.author)}
+                                        >
+                                            <MessageCircle className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleMore(post)}
+                                        >
+                                            <MoreHorizontal className="w-4 h-4" />
+                                        </Button>
                                     </div>
                                 </div>
                             </CardHeader>
@@ -356,14 +408,14 @@ export function SocialFeed() {
                             <CardContent className="space-y-4">
                                 {/* Post Title */}
                                 {post.title && (
-                                    <h3 className="font-semibold text-lg leading-tight">
+                                    <h3 className="font-semibold text-lg leading-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                                         {post.title}
                                     </h3>
                                 )}
 
                                 {/* Post Image */}
                                 {postImage && (
-                                    <div className="rounded-lg overflow-hidden">
+                                    <div className="rounded-lg overflow-hidden border border-border/20">
                                         <img
                                             src={postImage}
                                             alt=""
@@ -385,7 +437,7 @@ export function SocialFeed() {
                                 {post.tags.length > 0 && (
                                     <div className="flex flex-wrap gap-1">
                                         {post.tags.slice(0, 5).map((tag, index) => (
-                                            <Badge key={`${post.id}-tag-${index}-${tag}`} variant="secondary" className="text-xs">
+                                            <Badge key={`${post.id}-tag-${index}-${tag}`} variant="secondary" className="text-xs bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30">
                                                 <Hash className="w-3 h-3 mr-1" />
                                                 {tag}
                                             </Badge>
@@ -399,14 +451,14 @@ export function SocialFeed() {
                                 )}
 
                                 {/* Action Buttons */}
-                                <div className="flex items-center justify-between pt-3 border-t">
+                                <div className="flex items-center justify-between pt-3 border-t border-border/20">
                                     <div className="flex items-center space-x-4">
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleVote(post, 10000)}
-                                            disabled={!isAuthenticated || isVoting === post.id}
-                                            className={post.isUpvoted ? 'text-green-600' : ''}
+                                            disabled={!isAuthenticated || isVoting}
+                                            className={post.active_votes?.find(vote => vote.voter === username && vote.percent > 0) ? 'text-green-600' : ''}
                                         >
                                             <ChevronUp className="w-4 h-4 mr-1" />
                                             {post.upvotes}
@@ -416,8 +468,8 @@ export function SocialFeed() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleVote(post, -10000)}
-                                            disabled={!isAuthenticated || isVoting === post.id}
-                                            className={post.isDownvoted ? 'text-red-600' : ''}
+                                            disabled={!isAuthenticated || isVoting}
+                                            className={post.active_votes?.find(vote => vote.voter === username && vote.percent < 0) ? 'text-red-600' : ''}
                                         >
                                             <ChevronDown className="w-4 h-4 mr-1" />
                                             {post.downvotes}
@@ -430,7 +482,7 @@ export function SocialFeed() {
                                             disabled={!isAuthenticated}
                                         >
                                             <MessageCircle className="w-4 h-4 mr-1" />
-                                            {post.replies > 0 ? `${post.replies} Replies` : 'Reply'}
+                                            {post.children && post.children > 0 ? post.children : 'Reply'}
                                         </Button>
                                     </div>
 
@@ -448,16 +500,16 @@ export function SocialFeed() {
                 })}
             </div>
 
-            {/* Load More Button */}
-            {hasMore && (
-                <div className="text-center">
+            {/* Load More Button/Infinite Scroll Trigger */}
+            {hasNextPage && (
+                <div ref={loadMoreRef} className="text-center py-4">
                     <Button
                         variant="outline"
-                        onClick={() => loadFeed(false)}
-                        disabled={isLoading}
+                        onClick={() => fetchNextPage()}
+                        disabled={isFetchingNextPage}
                         className="min-w-[120px]"
                     >
-                        {isLoading ? (
+                        {isFetchingNextPage ? (
                             <>
                                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
                                 Loading...
@@ -467,6 +519,19 @@ export function SocialFeed() {
                         )}
                     </Button>
                 </div>
+            )}
+
+            {/* Comment Modal */}
+            {selectedPost && (
+                <CommentModal
+                    open={showCommentModal}
+                    onOpenChange={setShowCommentModal}
+                    post={selectedPost}
+                    onCommentSuccess={() => {
+                        // Refresh the feed after a successful comment
+                        refetch();
+                    }}
+                />
             )}
         </div>
     );

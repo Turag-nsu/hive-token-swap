@@ -1,48 +1,35 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { useAuthStore } from '@/stores/auth';
-import { hiveSocialAPI } from '@/lib/api/hive-social';
-import { UserProfile } from '@/types/social';
-import { Wallet, LogIn, User, Shield } from 'lucide-react';
+import { useUser } from '@/hooks/useUser';
+import { Wallet, LogIn, User, Shield, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { keychain } from '@/lib/blockchain/keychain';
+import { hiveSocialAPI } from '@/lib/api/hive-social';
+import { UserProfile } from '@/types/social';
 
 export function SocialSidebar() {
-    const { isAuthenticated, username, userProfile, login, logout, updateProfile } = useAuthStore();
+    const { 
+      isAuthenticated, 
+      username, 
+      userProfile, 
+      login, 
+      logout, 
+      updateProfile, 
+      isLoading, 
+      isFetching,
+      refreshUser,
+      error
+    } = useUser();
+    
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [loginUsername, setLoginUsername] = useState('');
 
     // Debug logging
-    console.log('SocialSidebar state:', { isAuthenticated, username, userProfile });
-
-    const loadUserProfile = useCallback(async () => {
-        if (!username) return;
-
-        try {
-            const profile = await hiveSocialAPI.getUserProfile(username);
-            if (profile) {
-                updateProfile(profile);
-            }
-        } catch (error) {
-            console.error('Error loading user profile:', error);
-        }
-    }, [username, updateProfile]);
-
-    useEffect(() => {
-        // Load user profile if authenticated but profile not loaded
-        if (isAuthenticated && username && !userProfile) {
-            loadUserProfile();
-        }
-    }, [isAuthenticated, username, userProfile, loadUserProfile]);
-
-    // Monitor auth state changes
-    useEffect(() => {
-        console.log('Auth state changed:', { isAuthenticated, username, userProfile });
-    }, [isAuthenticated, username, userProfile]);
+    console.log('SocialSidebar state:', { isAuthenticated, username, userProfile, isLoading, isFetching, error });
 
     const handleKeychainLogin = async () => {
         if (!keychain) {
@@ -100,13 +87,6 @@ export function SocialSidebar() {
                 login(loginUsername.trim(), 'keychain', undefined);
                 console.log('Auth store login completed');
 
-                // Check state immediately after login
-                console.log('State after login:', {
-                    isAuthenticated,
-                    username,
-                    loginUsername: loginUsername.trim()
-                });
-
                 toast.success('Successfully logged in with Hive Keychain!');
                 setLoginUsername('');
 
@@ -114,13 +94,10 @@ export function SocialSidebar() {
                 setTimeout(async () => {
                     try {
                         console.log('Loading user profile in background...');
-                        const profile = await hiveSocialAPI.getUserProfile(loginUsername.trim());
-                        console.log('User profile loaded:', profile);
-                        if (profile) {
-                            updateProfile(profile);
-                        }
+                        await refreshUser();
                     } catch (profileError) {
                         console.warn('Background profile loading failed:', profileError);
+                        toast.error('Failed to load user profile');
                     }
                 }, 100);
             } else {
@@ -140,28 +117,48 @@ export function SocialSidebar() {
         toast.success('Logged out successfully');
     };
 
+    const handleRefreshProfile = async () => {
+        try {
+            await refreshUser();
+            toast.success('Profile refreshed successfully');
+        } catch (error) {
+            toast.error('Failed to refresh profile');
+        }
+    };
+
     if (isAuthenticated && username) {
         // Show user profile if available, otherwise show basic user info
-        if (userProfile) {
+        const profile = userProfile as UserProfile | null;
+        
+        if (profile && !isLoading) {
             return (
                 <div className="space-y-4">
                     {/* User Profile Card */}
                     <Card>
-                        <CardHeader className="text-center">
+                        <CardHeader className="text-center relative">
                             <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-3">
                                 <User className="w-8 h-8 text-primary" />
                             </div>
-                            <CardTitle className="text-lg">{userProfile.displayName}</CardTitle>
-                            <p className="text-sm text-muted-foreground">@{userProfile.username}</p>
+                            <CardTitle className="text-lg">{profile.displayName || profile.username}</CardTitle>
+                            <p className="text-sm text-muted-foreground">@{profile.username}</p>
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={handleRefreshProfile}
+                                disabled={isFetching}
+                                className="absolute top-2 right-2"
+                            >
+                                <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+                            </Button>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="text-center">
-                                    <div className="font-semibold">{userProfile.postCount}</div>
+                                    <div className="font-semibold">{profile.postCount || 0}</div>
                                     <div className="text-muted-foreground">Posts</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="font-semibold">{userProfile.reputation}</div>
+                                    <div className="font-semibold">{profile.reputation || 25}</div>
                                     <div className="text-muted-foreground">Reputation</div>
                                 </div>
                             </div>
@@ -169,25 +166,25 @@ export function SocialSidebar() {
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                     <span>HIVE Balance:</span>
-                                    <span className="font-medium">{userProfile.hiveBalance}</span>
+                                    <span className="font-medium">{profile.hiveBalance || '0.000 HIVE'}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>HBD Balance:</span>
-                                    <span className="font-medium">{userProfile.hbdBalance}</span>
+                                    <span className="font-medium">{profile.hbdBalance || '0.000 HBD'}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Hive Power:</span>
-                                    <span className="font-medium">{userProfile.hp}</span>
+                                    <span className="font-medium">{profile.hp || '0.000 HP'}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Voting Power:</span>
-                                    <span className="font-medium">{userProfile.votingPower}%</span>
+                                    <span className="font-medium">{profile.votingPower || 100}%</span>
                                 </div>
                             </div>
 
-                            {userProfile.about && (
+                            {profile.about && (
                                 <div className="pt-2 border-t">
-                                    <p className="text-sm text-muted-foreground">{userProfile.about}</p>
+                                    <p className="text-sm text-muted-foreground">{profile.about}</p>
                                 </div>
                             )}
 
@@ -212,10 +209,10 @@ export function SocialSidebar() {
                                     <div className="w-12 h-2 bg-muted rounded-full mr-2 relative">
                                         <div
                                             className="h-full bg-primary rounded-full transition-all duration-300"
-                                            data-width={userProfile.votingPower}
+                                            style={{ width: `${profile.votingPower || 100}%` }}
                                         />
                                     </div>
-                                    <span>{userProfile.votingPower}%</span>
+                                    <span>{profile.votingPower || 100}%</span>
                                 </div>
                             </div>
                             <div className="flex justify-between text-sm">
@@ -224,10 +221,10 @@ export function SocialSidebar() {
                                     <div className="w-12 h-2 bg-muted rounded-full mr-2 relative">
                                         <div
                                             className="h-full bg-destructive rounded-full transition-all duration-300"
-                                            data-width={userProfile.downvotePower}
+                                            style={{ width: `${profile.downvotePower || 100}%` }}
                                         />
                                     </div>
-                                    <span>{userProfile.downvotePower}%</span>
+                                    <span>{profile.downvotePower || 100}%</span>
                                 </div>
                             </div>
                         </CardContent>
@@ -244,12 +241,16 @@ export function SocialSidebar() {
                                 <User className="w-8 h-8 text-primary" />
                             </div>
                             <CardTitle className="text-lg">@{username}</CardTitle>
-                            <p className="text-sm text-muted-foreground">Loading profile...</p>
+                            <p className="text-sm text-muted-foreground">
+                                {isLoading ? 'Loading profile...' : 'Profile not available'}
+                            </p>
+                            {isLoading && (
+                                <div className="mt-2">
+                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto" />
+                                </div>
+                            )}
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <div className="text-center text-sm text-muted-foreground">
-                                <div className="animate-pulse">Fetching account details...</div>
-                            </div>
                             <Button variant="outline" onClick={handleLogout} className="w-full">
                                 Logout
                             </Button>
@@ -288,7 +289,12 @@ export function SocialSidebar() {
                     className="w-full"
                 >
                     <Wallet className="w-4 h-4 mr-2" />
-                    {isLoggingIn ? 'Connecting...' : 'Login with Hive Keychain'}
+                    {isLoggingIn ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                            Connecting...
+                        </>
+                    ) : 'Login with Hive Keychain'}
                 </Button>
 
                 <div className="text-xs text-muted-foreground space-y-1">

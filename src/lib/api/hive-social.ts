@@ -1,13 +1,8 @@
 import { Client } from '@hiveio/dhive';
 import { CommentData, VoteData, SocialFeedItem, UserProfile } from '@/types/social';
 
-// Use multiple stable RPC nodes for redundancy
-const HIVE_NODES = [
-  'https://api.hive.blog',
-  'https://api.openhive.network',
-  'https://hived.privex.io',
-  'https://rpc.ecency.com'
-];
+// Use a single stable RPC node to avoid switching issues
+const HIVE_NODE = 'https://api.hive.blog';
 
 // Custom fetch function to avoid "Illegal invocation" errors
 const customFetch = (url: string, options?: RequestInit): Promise<Response> => {
@@ -38,50 +33,16 @@ const customFetch = (url: string, options?: RequestInit): Promise<Response> => {
 };
 
 export class HiveSocialAPI {
-  private client: Client | null = null;
-  private currentNodeIndex: number = 0;
-
+  private client: Client;
+  
   constructor() {
-    // Don't initialize client in constructor - use lazy initialization
-    if (typeof window !== 'undefined') {
-      this.initializeClient();
-    }
-  }
-
-  // Lazy initialization of the client
-  private initializeClient(): Client {
-    // Only initialize in browser environment
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
-
-    if (!this.client) {
-      this.client = new Client(HIVE_NODES[0], {
-        timeout: 15000,
-        failoverThreshold: 3,
-        consoleOnFailover: true,
-        // Use custom agent to avoid fetch context issues
-        agent: undefined
-      });
-    }
-    return this.client;
-  }
-
-  // Switch to next available node
-  private switchToNextNode(): void {
-    // Only execute in browser environment
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
-    
-    this.currentNodeIndex = (this.currentNodeIndex + 1) % HIVE_NODES.length;
-    const newNode = HIVE_NODES[this.currentNodeIndex];
-    console.log(`🔄 Switching to node: ${newNode}`);
-    
-    this.client = new Client(newNode, {
+    // Configure dhive client with proper fetch and timeout settings
+    this.client = new Client(HIVE_NODE, {
       timeout: 15000,
-      failoverThreshold: 3,
-      consoleOnFailover: true
+      failoverThreshold: 0,
+      consoleOnFailover: false,
+      // Use custom agent to avoid fetch context issues
+      agent: typeof window !== 'undefined' ? undefined : undefined
     });
   }
 
@@ -100,7 +61,7 @@ export class HiveSocialAPI {
     };
 
     try {
-      const response = await customFetch(HIVE_NODES[0], {
+      const response = await customFetch(HIVE_NODE, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,69 +87,38 @@ export class HiveSocialAPI {
     }
   }
 
-  // Direct Condenser API call with failover support
+  // Direct Condenser API call with custom fetch
   private async callCondenserAPI(method: string, params: any[] = []): Promise<any> {
-    // Only execute in browser environment
-    if (typeof window === 'undefined') {
-      throw new Error('HiveSocialAPI can only be used in browser environment');
-    }
+    const body = {
+      jsonrpc: '2.0',
+      method: `condenser_api.${method}`,
+      params,
+      id: 1
+    };
 
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt < HIVE_NODES.length; attempt++) {
-      try {
-        // Initialize client if needed
-        const client = this.initializeClient();
-        
-        // Use dhive's database API for better reliability
-        const result = await client.database.call(method, params);
-        console.log(`✅ API call successful: ${method} on ${HIVE_NODES[this.currentNodeIndex]}`);
-        return result;
-      } catch (error) {
-        lastError = error as Error;
-        console.warn(`⚠️ API call failed on ${HIVE_NODES[this.currentNodeIndex]}: ${error}`);
-        
-        if (attempt < HIVE_NODES.length - 1) {
-          this.switchToNextNode();
-          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
-        }
-      }
-    }
-    
-    throw lastError || new Error(`All ${HIVE_NODES.length} nodes failed for ${method}`);
-  }
-
-  // Get post with fresh votes and replies
-  async getPostWithVotesAndReplies(author: string, permlink: string): Promise<any> {
     try {
-      console.log(`🔄 Fetching fresh post data for ${author}/${permlink}`);
-
-      // Get the fresh post content
-      const post = await this.callCondenserAPI('get_content', [author, permlink]);
-
-      if (!post || !post.author) {
-        throw new Error('Post not found');
-      }
-
-      // Get fresh replies
-      const replies = await this.callCondenserAPI('get_content_replies', [author, permlink]);
-
-      // Add replies to post
-      post.replies = replies || [];
-      post.reply_count = replies ? replies.length : 0;
-
-      console.log(`✅ Fresh post data retrieved:`, {
-        author: post.author,
-        permlink: post.permlink,
-        activeVotes: post.active_votes?.length || 0,
-        netVotes: post.net_votes,
-        replyCount: post.reply_count
+      const response = await customFetch(HIVE_NODE, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body)
       });
 
-      return post;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+        
+      if (data.error) {
+        throw new Error(`API Error: ${data.error.message || JSON.stringify(data.error)}`);
+      }
+
+      return data.result;
     } catch (error) {
-      console.error(`Error fetching fresh post data for ${author}/${permlink}:`, error);
-      throw error;
+      console.error(`Condenser API call failed for ${method}:`, error);
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -393,9 +323,20 @@ export class HiveSocialAPI {
       const posts = await Promise.all(
         blog.map(async (entry: any) => {
           try {
-            return await this.getContent(entry.author, entry.permlink);
+            // The get_blog API returns entries with different structure
+            // We need to extract the author and permlink from the entry
+            const postAuthor = entry.author || entry.comment?.author || author;
+            const postPermlink = entry.permlink || entry.comment?.permlink;
+            
+            // Skip if we don't have valid author/permlink
+            if (!postAuthor || !postPermlink) {
+              console.warn('Skipping blog entry with missing author/permlink:', entry);
+              return null;
+            }
+            
+            return await this.getContent(postAuthor, postPermlink);
           } catch (error) {
-            console.warn(`Failed to get content for ${entry.author}/${entry.permlink}:`, error);
+            console.warn(`Failed to get content for blog entry:`, entry, error);
             return null;
           }
         })
@@ -505,6 +446,58 @@ export class HiveSocialAPI {
 
     return enhancedPosts;
   }
+
+  // Get post with votes and replies
+  async getPostWithVotesAndReplies(author: string, permlink: string): Promise<SocialFeedItem> {
+    try {
+      // Get the main post content
+      const content = await this.getContent(author, permlink);
+      
+      // Get active votes
+      const votes = await this.getActiveVotes(author, permlink);
+      
+      // Get replies
+      const replies = await this.getContentReplies(author, permlink);
+      
+      // Transform content to SocialFeedItem
+      const post: SocialFeedItem = {
+        id: `${content.author}/${content.permlink}`,
+        author: content.author,
+        permlink: content.permlink,
+        title: content.title,
+        body: content.body,
+        created: content.created,
+        payout: parseFloat(content.pending_payout_value) || 0,
+        upvotes: votes.filter((vote: any) => vote.percent > 0).length,
+        downvotes: votes.filter((vote: any) => vote.percent < 0).length,
+        reputation: content.author_reputation,
+        tags: content.json_metadata && content.json_metadata.tags ? content.json_metadata.tags : [],
+        active_votes: votes,
+        children: content.children,
+        replies: replies.map((reply: any) => ({
+          id: `${reply.author}/${reply.permlink}`,
+          author: reply.author,
+          permlink: reply.permlink,
+          title: reply.title,
+          body: reply.body,
+          created: reply.created,
+          payout: parseFloat(reply.pending_payout_value) || 0,
+          upvotes: reply.active_votes ? reply.active_votes.filter((vote: any) => vote.percent > 0).length : 0,
+          downvotes: reply.active_votes ? reply.active_votes.filter((vote: any) => vote.percent < 0).length : 0,
+          reputation: reply.author_reputation,
+          tags: reply.json_metadata && reply.json_metadata.tags ? reply.json_metadata.tags : [],
+          active_votes: reply.active_votes || [],
+          children: reply.children,
+        }))
+      };
+      
+      return post;
+    } catch (error) {
+      console.error(`Error fetching post with votes and replies for ${author}/${permlink}:`, error);
+      throw error;
+    }
+  }
+
   async getUserAccount(username: string): Promise<any> {
     try {
       // Use the database_api.find_accounts method as documented
@@ -529,9 +522,17 @@ export class HiveSocialAPI {
   // Get user profile with calculated stats using Condenser API
   async getUserProfile(username: string): Promise<UserProfile | null> {
     try {
+      // Check if we're in browser environment
+      if (typeof window === 'undefined') {
+        throw new Error('HiveSocialAPI can only be used in browser environment');
+      }
+
+      console.log('Fetching user profile for:', username);
+      
       // Use Condenser API to get account information
       const accounts = await this.getAccounts([username]);
       if (!accounts || accounts.length === 0) {
+        console.log('No account found for username:', username);
         return null;
       }
 
@@ -562,14 +563,40 @@ export class HiveSocialAPI {
       const effectiveVestingShares = userVestingShares - delegatedVestingShares + receivedVestingShares;
 
       // Get dynamic global properties for HP calculation
-      const globalProps = await this.getDynamicGlobalProperties();
-      const totalVestingFund = parseFloat(globalProps.total_vesting_fund_hive.toString().split(' ')[0]);
-      const totalVestingShares = parseFloat(globalProps.total_vesting_shares.toString().split(' ')[0]);
-      const hivePower = (effectiveVestingShares * totalVestingFund) / totalVestingShares;
+      let hivePower = 0;
+      try {
+        const globalProps = await this.getDynamicGlobalProperties();
+        const totalVestingFund = parseFloat(globalProps.total_vesting_fund_hive.toString().split(' ')[0]);
+        const totalVestingShares = parseFloat(globalProps.total_vesting_shares.toString().split(' ')[0]);
+        hivePower = (effectiveVestingShares * totalVestingFund) / totalVestingShares;
+      } catch (globalPropsError) {
+        console.warn('Failed to calculate Hive Power:', globalPropsError);
+        hivePower = 0;
+      }
 
-      // For now, simplify the profile data to avoid complex calculations
-      // These can be enhanced later once the basic functionality is working
-      return {
+      // Calculate voting power
+      let votingPower = 100;
+      let downvotePower = 100;
+      
+      try {
+        // Calculate voting power based on last vote time and current mana
+        const lastVoteTime = new Date(account.last_vote_time + 'Z').getTime();
+        const currentTime = Date.now();
+        const secondsSinceLastVote = (currentTime - lastVoteTime) / 1000;
+        
+        // Voting mana regenerates at 10000 units per day (100% per day)
+        const regeneratedMana = (secondsSinceLastVote / 86400) * 10000;
+        const currentMana = parseInt(account.voting_manabar.current_mana) + regeneratedMana;
+        votingPower = Math.min(100, (currentMana / 10000) * 100);
+        
+        // Downvote power calculation
+        const downvoteMana = parseInt(account.downvote_manabar.current_mana) + regeneratedMana;
+        downvotePower = Math.min(100, (downvoteMana / 10000) * 100);
+      } catch (votingPowerError) {
+        console.warn('Failed to calculate voting power:', votingPowerError);
+      }
+
+      const userProfile: UserProfile = {
         username: account.name,
         displayName: profile.name || account.name,
         about: profile.about || '',
@@ -577,16 +604,20 @@ export class HiveSocialAPI {
         location: profile.location || '',
         coverImage: profile.cover_image || '',
         profileImage: profile.profile_image || '',
-        reputation: this.calculateReputation(account.reputation),
+        reputation: this.parseReputation(account.reputation),
+        followersCount: 0, // Would need separate API call
+        followingCount: 0, // Would need separate API call
+        postCount: account.post_count || 0,
         hiveBalance: account.balance || '0.000 HIVE',
         hbdBalance: account.hbd_balance || '0.000 HBD',
         hp: `${hivePower.toFixed(3)} HP`,
-        votingPower: 100, // Simplified for now
-        downvotePower: 100, // Simplified for now
-        postCount: account.post_count || 0,
-        followersCount: 0, // Would need separate API call
-        followingCount: 0 // Would need separate API call
+        votingPower: Math.round(votingPower),
+        downvotePower: Math.round(downvotePower),
+        joinDate: account.created || null // Add join date
       };
+
+      console.log('User profile fetched successfully:', userProfile);
+      return userProfile;
     } catch (error) {
       console.error('Error fetching user profile:', error);
       return null;
@@ -606,14 +637,56 @@ export class HiveSocialAPI {
 
   // Submit a new post via Hive Keychain
   async submitPost(postData: CommentData): Promise<boolean> {
-    try {
-      // For now, simulate successful post submission
-      console.log('Post submission simulated:', postData);
-      return true;
-    } catch (error) {
-      console.error('Error submitting post:', error);
-      throw error;
+    // Only execute in browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
     }
+
+    return new Promise((resolve, reject) => {
+      console.log('📝 Submitting post via HiveKeychain:', postData);
+
+      // Check if HiveKeychain is available
+      if (!(window as any).hive_keychain) {
+        reject(new Error('HiveKeychain not installed or not available'));
+        return;
+      }
+
+      const keychain = (window as any).hive_keychain;
+
+      // Create comment operation
+      const commentOperation = [
+        'comment',
+        {
+          parent_author: postData.parent_author,
+          parent_permlink: postData.parent_permlink,
+          author: postData.author,
+          permlink: postData.permlink,
+          title: postData.title,
+          body: postData.body,
+          json_metadata: postData.json_metadata
+        }
+      ];
+
+      console.log('📝 Comment operation:', commentOperation);
+
+      // Request HiveKeychain to broadcast the comment
+      keychain.requestBroadcast(
+        postData.author,
+        [commentOperation],
+        'Posting',
+        (response: any) => {
+          console.log('🔗 HiveKeychain response:', response);
+
+          if (response.success) {
+            console.log('✅ Post submission successful!', response);
+            resolve(true);
+          } else {
+            console.error('❌ Post submission failed:', response.message || response.error);
+            reject(new Error(response.message || response.error || 'Post submission failed'));
+          }
+        }
+      );
+    });
   }
 
   // Vote on a post via Hive Keychain
@@ -667,8 +740,8 @@ export class HiveSocialAPI {
     });
   }
 
-  // Transform Condenser API post to social feed item (public method)
-  public transformCondenserToSocialFeedItem = (post: any): SocialFeedItem => {
+  // Transform Condenser API post to social feed item
+  private transformCondenserToSocialFeedItem = (post: any): SocialFeedItem => {
     console.log('🔍 Transforming Condenser API post:', {
       author: post.author,
       permlink: post.permlink,
@@ -676,6 +749,7 @@ export class HiveSocialAPI {
       hasActiveVotes: !!post.active_votes,
       activeVotesLength: post.active_votes?.length,
       netVotes: post.net_votes,
+      children: post.children,
       availableFields: Object.keys(post)
     });
 
@@ -742,123 +816,191 @@ export class HiveSocialAPI {
       category: post.category || tags[0] || '',
       upvotes,
       downvotes,
-      replies: post.reply_count || post.children || 0,
       payout: payout + ' HBD',
-      reputation: this.calculateReputation(post.author_reputation),
+      reputation: this.parseReputation(post.author_reputation),
       tags,
       images,
-      isUpvoted: false, // TODO: Check if current user voted
-      isDownvoted: false // TODO: Check if current user voted
+      active_votes: post.active_votes,
+      children: post.children || 0 // Added children count
     };
   }
 
-  // Transform Hive post to social feed item (Legacy Bridge API)
-  private transformToSocialFeedItem = (post: any): SocialFeedItem => {
-    console.log('🔍 Transforming post data:', {
-      author: post.author,
-      permlink: post.permlink,
-      title: post.title,
-      hasActiveVotes: !!post.active_votes,
-      activeVotesLength: post.active_votes?.length,
-      hasStats: !!post.stats,
-      stats: post.stats,
-      netVotes: post.net_votes,
-      availableFields: Object.keys(post)
-    });
-
+  // Transform account data to UserProfile
+  transformUserProfile(account: any): UserProfile {
     let metadata: any = {};
+
     try {
-      // Check if json_metadata is already an object or needs parsing
-      if (typeof post.json_metadata === 'string') {
-        metadata = JSON.parse(post.json_metadata || '{}');
-      } else if (typeof post.json_metadata === 'object' && post.json_metadata !== null) {
-        metadata = post.json_metadata;
+      // Parse posting_json_metadata first, then fallback to json_metadata
+      const metadataSource = account.posting_json_metadata || account.json_metadata || '{}';
+      if (typeof metadataSource === 'string') {
+        metadata = JSON.parse(metadataSource);
+      } else if (typeof metadataSource === 'object' && metadataSource !== null) {
+        metadata = metadataSource;
       } else {
         metadata = {};
       }
     } catch (e) {
-      console.warn('Failed to parse post metadata:', e);
+      console.warn('Failed to parse user metadata:', e);
       metadata = {};
     }
 
-    const tags = metadata.tags || [];
-    const images = metadata.image || [];
+    const profile = metadata.profile || {};
 
-    // Calculate payout
-    const pendingPayout = parseFloat(post.pending_payout_value?.split(' ')[0] || '0');
-    const totalPayout = parseFloat(post.total_payout_value?.split(' ')[0] || '0');
-    const curatorPayout = parseFloat(post.curator_payout_value?.split(' ')[0] || '0');
-    const payout = (pendingPayout + totalPayout + curatorPayout).toFixed(3);
+    // Calculate Hive Power
+    const userVestingShares = parseFloat(account.vesting_shares.split(' ')[0]);
+    const delegatedVestingShares = parseFloat(account.delegated_vesting_shares.split(' ')[0]);
+    const receivedVestingShares = parseFloat(account.received_vesting_shares.split(' ')[0]);
+    const effectiveVestingShares = userVestingShares - delegatedVestingShares + receivedVestingShares;
 
-    // Count votes - Bridge API uses different format than expected
-    let upvotes = 0;
-    let downvotes = 0;
-    let voteSource = 'none';
-
-    if (post.active_votes && Array.isArray(post.active_votes)) {
-      // Bridge API response with active_votes array
-      // Bridge API uses rshares instead of percent
-      upvotes = post.active_votes.filter((vote: any) => {
-        // Check for positive rshares (upvotes) or positive percent
-        return (vote.rshares && vote.rshares > 0) || (vote.percent && vote.percent > 0);
-      }).length;
-
-      downvotes = post.active_votes.filter((vote: any) => {
-        // Check for negative rshares (downvotes) or negative percent  
-        return (vote.rshares && vote.rshares < 0) || (vote.percent && vote.percent < 0);
-      }).length;
-
-      voteSource = 'active_votes';
-      console.log('📊 Vote data from active_votes:', {
-        upvotes,
-        downvotes,
-        totalVotes: post.active_votes.length,
-        sampleVotes: post.active_votes.slice(0, 3).map(v => ({ voter: v.voter, rshares: v.rshares, percent: v.percent }))
-      });
-    } else if (post.stats) {
-      // Bridge API response with stats object
-      upvotes = post.stats.total_votes || 0;
-      downvotes = 0; // Bridge API doesn't separate downvotes easily
-      voteSource = 'stats';
-      console.log('📊 Vote data from stats:', { upvotes, downvotes, stats: post.stats });
-    } else if (typeof post.net_votes === 'number') {
-      // Bridge API also provides net_votes
-      upvotes = Math.max(0, post.net_votes);
-      downvotes = Math.max(0, -post.net_votes);
-      voteSource = 'net_votes';
-      console.log('📊 Vote data from net_votes:', { upvotes, downvotes, netVotes: post.net_votes });
-    } else {
-      // Fallback to zero if no vote data available
-      upvotes = 0;
-      downvotes = 0;
-      voteSource = 'fallback';
-      console.log('⚠️ No vote data available, using fallback');
+    // Get dynamic global properties for HP calculation
+    let hivePower = 0;
+    try {
+      const globalProps = this.getDynamicGlobalProperties();
+      const totalVestingFund = parseFloat(globalProps.total_vesting_fund_hive.toString().split(' ')[0]);
+      const totalVestingShares = parseFloat(globalProps.total_vesting_shares.toString().split(' ')[0]);
+      hivePower = (effectiveVestingShares * totalVestingFund) / totalVestingShares;
+    } catch (globalPropsError) {
+      console.warn('Failed to calculate Hive Power:', globalPropsError);
+      hivePower = 0;
     }
 
-    console.log('✅ Final vote counts:', { upvotes, downvotes, voteSource, postId: `${post.author}/${post.permlink}` });
+    // Calculate voting power
+    let votingPower = 100;
+    let downvotePower = 100;
+    
+    try {
+      // Calculate voting power based on last vote time and current mana
+      const lastVoteTime = new Date(account.last_vote_time + 'Z').getTime();
+      const currentTime = Date.now();
+      const secondsSinceLastVote = (currentTime - lastVoteTime) / 1000;
+      
+      // Voting mana regenerates at 10000 units per day (100% per day)
+      const regeneratedMana = (secondsSinceLastVote / 86400) * 10000;
+      const currentMana = parseInt(account.voting_manabar.current_mana) + regeneratedMana;
+      votingPower = Math.min(100, (currentMana / 10000) * 100);
+      
+      // Downvote power calculation
+      const downvoteMana = parseInt(account.downvote_manabar.current_mana) + regeneratedMana;
+      downvotePower = Math.min(100, (downvoteMana / 10000) * 100);
+    } catch (votingPowerError) {
+      console.warn('Failed to calculate voting power:', votingPowerError);
+    }
 
     return {
-      id: `${post.author}/${post.permlink}`,
-      author: post.author,
-      permlink: post.permlink,
-      title: post.title || '',
-      body: post.body || '',
-      created: post.created,
-      category: post.category || tags[0] || '',
-      upvotes,
-      downvotes,
-      replies: post.children || 0,
-      payout: payout + ' HBD',
-      reputation: this.calculateReputation(post.author_reputation),
-      tags,
-      images,
-      isUpvoted: false, // TODO: Check if current user voted
-      isDownvoted: false // TODO: Check if current user voted
+      username: account.name,
+      displayName: profile.name || account.name,
+      about: profile.about || '',
+      website: profile.website || '',
+      location: profile.location || '',
+      coverImage: profile.cover_image || '',
+      profileImage: profile.profile_image || '',
+      reputation: this.parseReputation(account.reputation),
+      followersCount: 0, // Would need separate API call
+      followingCount: 0, // Would need separate API call
+      postCount: account.post_count || 0,
+      hiveBalance: account.balance || '0.000 HIVE',
+      hbdBalance: account.hbd_balance || '0.000 HBD',
+      hp: `${hivePower.toFixed(3)} HP`,
+      votingPower: Math.round(votingPower),
+      downvotePower: Math.round(downvotePower),
+      joinDate: account.created || null // Add join date
     };
   }
 
+  // Update user profile metadata using account_update2 operation
+  async updateProfileMetadata(username: string, profileData: Partial<UserProfile>): Promise<boolean> {
+    // Only execute in browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+
+    return new Promise((resolve, reject) => {
+      console.log('📝 Updating profile metadata via HiveKeychain:', { username, profileData });
+
+      // Check if HiveKeychain is available
+      if (!(window as any).hive_keychain) {
+        reject(new Error('HiveKeychain not installed or not available'));
+        return;
+      }
+
+      const keychain = (window as any).hive_keychain;
+
+      // Get current account data to preserve existing metadata
+      this.getUserAccount(username).then(account => {
+        if (!account) {
+          reject(new Error('Failed to fetch account data'));
+          return;
+        }
+
+        // Parse existing metadata
+        let existingMetadata: any = {};
+        try {
+          const metadataSource = account.posting_json_metadata || account.json_metadata || '{}';
+          if (typeof metadataSource === 'string') {
+            existingMetadata = JSON.parse(metadataSource);
+          } else if (typeof metadataSource === 'object' && metadataSource !== null) {
+            existingMetadata = metadataSource;
+          }
+        } catch (e) {
+          console.warn('Failed to parse existing metadata:', e);
+        }
+
+        // Update profile data
+        const updatedProfile = {
+          ...existingMetadata.profile,
+          name: profileData.displayName || existingMetadata.profile?.name || username,
+          about: profileData.about || existingMetadata.profile?.about || '',
+          website: profileData.website || existingMetadata.profile?.website || '',
+          location: profileData.location || existingMetadata.profile?.location || '',
+          cover_image: profileData.coverImage || existingMetadata.profile?.cover_image || '',
+          profile_image: profileData.profileImage || existingMetadata.profile?.profile_image || ''
+        };
+
+        // Create updated metadata
+        const updatedMetadata = {
+          ...existingMetadata,
+          profile: updatedProfile
+        };
+
+        // Create account_update2 operation
+        const accountUpdateOperation = [
+          'account_update2',
+          {
+            account: username,
+            json_metadata: account.json_metadata || '', // Keep existing json_metadata
+            posting_json_metadata: JSON.stringify(updatedMetadata),
+            extensions: []
+          }
+        ];
+
+        console.log('📝 Account update operation:', accountUpdateOperation);
+
+        // Request HiveKeychain to broadcast the account update
+        keychain.requestBroadcast(
+          username,
+          [accountUpdateOperation],
+          'Posting', // Posting authority is sufficient for updating profile metadata
+          (response: any) => {
+            console.log('🔗 HiveKeychain response:', response);
+
+            if (response.success) {
+              console.log('✅ Profile update successful!', response);
+              resolve(true);
+            } else {
+              console.error('❌ Profile update failed:', response.message || response.error);
+              reject(new Error(response.message || response.error || 'Profile update failed'));
+            }
+          }
+        );
+      }).catch(error => {
+        console.error('Error fetching account data:', error);
+        reject(new Error('Failed to fetch account data: ' + error.message));
+      });
+    });
+  }
+
   // Calculate reputation from raw reputation value
-  private calculateReputation(rawReputation: string | number): number {
+  private parseReputation(rawReputation: string | number): number {
     const rep = typeof rawReputation === 'string' ? parseInt(rawReputation) : rawReputation;
     if (rep === 0) return 25;
 
@@ -893,8 +1035,7 @@ export class HiveSocialAPI {
   // Get global properties
   async getGlobalProperties() {
     try {
-      const client = this.initializeClient();
-      return await client.database.getDynamicGlobalProperties();
+      return await this.getDynamicGlobalProperties();
     } catch (error) {
       console.error('Error fetching global properties:', error);
       throw error;
@@ -1106,58 +1247,132 @@ export const hiveSocialAPI = {
   },
 
   async getAccountComments(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().getAccountComments(accountName, limit, startAuthor, startPermlink);
   },
 
   async getAccountReplies(accountName: string, limit?: number, startAuthor?: string, startPermlink?: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().getAccountReplies(accountName, limit, startAuthor, startPermlink);
   },
 
   async getTrendingTags(afterTag?: string, limit?: number) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().getTrendingTags(afterTag, limit);
   },
 
   async getDiscussions(sortBy: string, query: any) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().getDiscussions(sortBy, query);
   },
 
   async getState(path: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().getState(path);
   },
 
   async getMarketHistory(bucketSeconds: number, start: string, end: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().getMarketHistory(bucketSeconds, start, end);
   },
 
   async getMarketHistoryBuckets() {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().getMarketHistoryBuckets();
   },
 
+  // Add the missing getUserProfile method
+  async getUserProfile(username: string): Promise<UserProfile | null> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().getUserProfile(username);
+  },
+
+  // Add the missing submitPost method
+  async submitPost(postData: CommentData): Promise<boolean> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().submitPost(postData);
+  },
+
+  // Add the missing votePost method
+  async votePost(voteData: VoteData): Promise<boolean> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().votePost(voteData);
+  },
+
   parseReputation(rawReputation: number | string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().parseReputation(rawReputation);
   },
 
   generatePermlink(title: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().generatePermlink(title);
   },
 
   formatHiveAmount(amount: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().formatHiveAmount(amount);
   },
 
   async getGlobalProperties() {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().getGlobalProperties();
   },
 
   hasUserVoted(post: any, username: string) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().hasUserVoted(post, username);
   },
 
   transformCondenserToSocialFeedItem(post: any) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().transformCondenserToSocialFeedItem(post);
   },
 
   transformUserProfile(account: any) {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
     return this.getInstance().transformUserProfile(account);
+  },
+
+  // Add the updateProfileMetadata method to the singleton
+  async updateProfileMetadata(username: string, profileData: Partial<UserProfile>): Promise<boolean> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveSocialAPI can only be used in browser environment');
+    }
+    return this.getInstance().updateProfileMetadata(username, profileData);
   }
 };

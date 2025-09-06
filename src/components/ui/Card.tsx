@@ -3,6 +3,7 @@
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils';
+import { useTheme } from '@/providers/ThemeProvider';
 
 const cardVariants = cva(
   'rounded-lg border bg-card text-card-foreground shadow-sm',
@@ -35,13 +36,25 @@ export interface CardProps
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant, padding, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(cardVariants({ variant, padding }), className)}
-      {...props}
-    />
-  )
+  ({ className, variant, padding, ...props }, ref) => {
+    const { computedTheme } = useTheme();
+    
+    // Add glass effect and theme-specific border colors
+    const themedClassName = cn(
+      computedTheme === 'dark' 
+        ? 'glass border-border/30' 
+        : 'glass border-border/60',
+      className
+    );
+    
+    return (
+      <div
+        ref={ref}
+        className={cn(cardVariants({ variant, padding }), themedClassName)}
+        {...props}
+      />
+    );
+  }
 );
 Card.displayName = 'Card';
 
@@ -64,7 +77,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      'text-2xl font-semibold leading-none tracking-tight',
+      'text-2xl font-semibold leading-none tracking-tight font-futuristic',
       className
     )}
     {...props}
@@ -141,7 +154,7 @@ export const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
           )}
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{value}</div>
+          <div className="text-2xl font-bold font-futuristic">{value}</div>
           {(description || trend) && (
             <div className="flex items-center space-x-2 text-xs text-muted-foreground">
               {trend && (

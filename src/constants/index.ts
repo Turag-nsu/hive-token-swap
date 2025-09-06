@@ -226,6 +226,8 @@ export const QUERY_KEYS = {
   MARKET_DATA: ['market'],
   TRANSACTION_HISTORY: ['transactions'],
   SWAP_RATE: ['swap', 'rate'],
+  USER_PROFILE: ['user', 'profile'],
+  USER_DATA: ['user', 'data'],
 } as const;
 
 // Route Paths

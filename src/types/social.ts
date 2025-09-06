@@ -107,7 +107,6 @@ export interface SocialFeedItem {
   category: string;
   upvotes: number;
   downvotes: number;
-  replies: number;
   payout: string;
   isUpvoted?: boolean;
   isDownvoted?: boolean;
@@ -115,6 +114,7 @@ export interface SocialFeedItem {
   tags: string[];
   images?: string[];
   active_votes?: HiveVote[];
+  children?: number; // Added comment count
 }
 
 export interface UserProfile {
@@ -134,6 +134,7 @@ export interface UserProfile {
   followersCount?: number;
   followingCount?: number;
   postCount: number;
+  joinDate?: string; // Add join date field
 }
 
 export interface NewPost {
