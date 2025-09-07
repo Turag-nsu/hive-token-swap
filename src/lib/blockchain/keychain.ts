@@ -261,8 +261,16 @@ class KeychainManager {
             (response: any) => {
               console.log('[KeychainManager] Direct API follow response:', response);
               if (response.success) {
+                // Show success notification if available
+                if (typeof window !== 'undefined' && (window as any).toast) {
+                  (window as any).toast.success(`Successfully followed @${following}`);
+                }
                 resolve(response);
               } else {
+                // Show error notification if available
+                if (typeof window !== 'undefined' && (window as any).toast) {
+                  (window as any).toast.error(response.message || 'Follow operation failed');
+                }
                 reject(new Error(response.message || 'Follow operation failed'));
               }
             }
@@ -279,12 +287,24 @@ class KeychainManager {
       });
 
       if (result.success) {
+        // Show success notification if available
+        if (typeof window !== 'undefined' && (window as any).toast) {
+          (window as any).toast.success(`Successfully followed @${following}`);
+        }
         return result.result;
       } else {
+        // Show error notification if available
+        if (typeof window !== 'undefined' && (window as any).toast) {
+          (window as any).toast.error(result.message || 'Follow operation failed');
+        }
         throw new Error(result.message || 'Follow operation failed');
       }
     } catch (error) {
       console.error('[KeychainManager] Follow error:', error);
+      // Show error notification if available
+      if (typeof window !== 'undefined' && (window as any).toast) {
+        (window as any).toast.error((error as Error).message || 'Follow operation failed');
+      }
       throw error;
     }
   }
@@ -335,8 +355,16 @@ class KeychainManager {
             (response: any) => {
               console.log('[KeychainManager] Direct API unfollow response:', response);
               if (response.success) {
+                // Show success notification if available
+                if (typeof window !== 'undefined' && (window as any).toast) {
+                  (window as any).toast.success(`Successfully unfollowed @${following}`);
+                }
                 resolve(response);
               } else {
+                // Show error notification if available
+                if (typeof window !== 'undefined' && (window as any).toast) {
+                  (window as any).toast.error(response.message || 'Unfollow operation failed');
+                }
                 reject(new Error(response.message || 'Unfollow operation failed'));
               }
             }
@@ -353,12 +381,24 @@ class KeychainManager {
       });
 
       if (result.success) {
+        // Show success notification if available
+        if (typeof window !== 'undefined' && (window as any).toast) {
+          (window as any).toast.success(`Successfully unfollowed @${following}`);
+        }
         return result.result;
       } else {
+        // Show error notification if available
+        if (typeof window !== 'undefined' && (window as any).toast) {
+          (window as any).toast.error(result.message || 'Unfollow operation failed');
+        }
         throw new Error(result.message || 'Unfollow operation failed');
       }
     } catch (error) {
       console.error('[KeychainManager] Unfollow error:', error);
+      // Show error notification if available
+      if (typeof window !== 'undefined' && (window as any).toast) {
+        (window as any).toast.error((error as Error).message || 'Unfollow operation failed');
+      }
       throw error;
     }
   }

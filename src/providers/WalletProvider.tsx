@@ -156,17 +156,26 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const { data: userData, refetch: refetchUser } = useQuery({
     queryKey: [...QUERY_KEYS.USER_BALANCE, state.user?.name],
     queryFn: async () => {
-      if (!state.user?.name) return null;
-      return await hiveRPC.getAccount(state.user.name);
+      console.log('[WalletProvider] Fetching user data for:', state.user?.name);
+      if (!state.user?.name) {
+        console.log('[WalletProvider] No username, returning null');
+        return null;
+      }
+      const result = await hiveRPC.getAccount(state.user.name);
+      console.log('[WalletProvider] User data fetched:', result?.name);
+      return result;
     },
     enabled: !!state.user?.name,
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 60000, // Refetch every minute
+    staleTime: 5 * 60 * 1000, // Increase to 5 minutes
+    gcTime: 10 * 60 * 1000, // Increase to 10 minutes
+    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
+    refetchOnWindowFocus: false, // Disable refetch on window focus to reduce calls
+    refetchOnReconnect: false, // Disable refetch on reconnect
   });
 
   // Update user data when query data changes
   useEffect(() => {
-    if (userData && state.user) {
+    if (userData && state.user && Object.keys(userData).length > 0) {
       dispatch({ type: 'UPDATE_USER', payload: userData });
     }
   }, [userData, state.user]);
@@ -195,104 +204,42 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       let accountName = username;
       console.log('[WalletProvider] Account name for connection:', accountName);
 
+      // If no account name provided, we'll let the keychain handle it
+      // The keychain.requestSignBuffer will prompt the user to select an account
       if (!accountName) {
-        console.log('[WalletProvider] No account name provided, trying to get accounts from keychain');
+        console.log('[WalletProvider] No account name provided, will prompt during authentication');
+      }
 
-        try {
-          // Try to get accounts from keychain
-          const accounts = await keychain.getAccounts();
-          console.log('[WalletProvider] keychain accounts:', accounts);
+      // Now authenticate with HiveKeychain by requesting a sign operation
+      console.log('[WalletProvider] Authenticating with HiveKeychain');
+      const authMessage = `Login to Hive Social Platform\nTimestamp: ${Date.now()}\nAccount: ${accountName || 'any'}`;
 
-          if (accounts && accounts.length > 0 && accounts[0]) {
-            accountName = accounts[0].name;
-            console.log('[WalletProvider] Using first account from keychain:', accountName);
-          } else {
-            // If no accounts available, prompt user for username
-            console.log('[WalletProvider] No accounts in keychain, prompting user for username');
-            let userInput: string | null = null;
-            let attempts = 0;
-            const maxAttempts = 3;
+      let signResult;
+      try {
+        signResult = await keychain.requestSignBuffer(
+          accountName || '', // Empty string will prompt user to select account
+          authMessage,
+          'Posting'
+        );
+      } catch (signError) {
+        console.error('[WalletProvider] Authentication error:', signError);
+        throw new Error('Failed to authenticate with HiveKeychain. Please make sure you approve the signing request.');
+      }
 
-            while (!userInput && attempts < maxAttempts) {
-              attempts++;
-              const promptMessage = attempts === 1
-                ? 'Please enter your Hive username to connect with HiveKeychain:'
-                : `Invalid username format. Please try again (${attempts}/${maxAttempts}).\nEnter your Hive username:`;
+      if (!signResult || !signResult.success) {
+        const errorMsg = signResult?.message || signResult?.error || 'Authentication failed. Please try again.';
+        throw new Error(errorMsg);
+      }
 
-              userInput = prompt(promptMessage);
-
-              if (!userInput) {
-                throw new Error('Username is required to connect. Please try again.');
-              }
-
-              userInput = userInput.trim().toLowerCase();
-
-              // Basic validation
-              if (!/^[a-z0-9.-]+$/.test(userInput) || userInput.length < 3 || userInput.length > 16) {
-                userInput = null; // Reset to retry
-                if (attempts === maxAttempts) {
-                  throw new Error('Invalid username format. Username must be 3-16 characters and contain only lowercase letters, numbers, dots, and hyphens.');
-                }
-              }
-            }
-
-            if (!userInput) {
-              throw new Error('Failed to get valid username after multiple attempts.');
-            }
-
-            accountName = userInput;
-            console.log('[WalletProvider] User provided username:', accountName);
-          }
-        } catch (keychainError) {
-          console.warn('[WalletProvider] Failed to get accounts from keychain:', keychainError);
-          // Fall back to prompting user
-          console.log('[WalletProvider] Falling back to user prompt');
-
-          let userInput: string | null = null;
-          let attempts = 0;
-          const maxAttempts = 3;
-
-          while (!userInput && attempts < maxAttempts) {
-            attempts++;
-            const promptMessage = attempts === 1
-              ? 'Please enter your Hive username to connect with HiveKeychain:'
-              : `Invalid username format. Please try again (${attempts}/${maxAttempts}).\nEnter your Hive username:`;
-
-            userInput = prompt(promptMessage);
-
-            if (!userInput) {
-              throw new Error('Username is required to connect. Please try again.');
-            }
-
-            userInput = userInput.trim().toLowerCase();
-
-            // Basic validation
-            if (!/^[a-z0-9.-]+$/.test(userInput) || userInput.length < 3 || userInput.length > 16) {
-              userInput = null; // Reset to retry
-              if (attempts === maxAttempts) {
-                throw new Error('Invalid username format. Username must be 3-16 characters and contain only lowercase letters, numbers, dots, and hyphens.');
-              }
-            }
-          }
-
-          if (!userInput) {
-            throw new Error('Failed to get valid username after multiple attempts.');
-          }
-
-          accountName = userInput;
-          console.log('[WalletProvider] User provided username:', accountName);
+      // Extract the username from the sign result if not provided
+      if (!accountName) {
+        accountName = signResult.data.username || signResult.username;
+        if (!accountName) {
+          throw new Error('Could not determine account name from authentication response.');
         }
       }
 
-      // Validate that we got a proper account name
-      if (!accountName || typeof accountName !== 'string' || accountName.trim() === '') {
-        console.error('[WalletProvider] Invalid account name received:', accountName);
-        throw new Error('Invalid username provided. Please make sure you entered a valid Hive username.');
-      }
-
-      // Trim the account name to remove any whitespace
-      accountName = accountName.trim();
-      console.log('[WalletProvider] Using trimmed account name:', accountName);
+      console.log('[WalletProvider] Authentication successful for user:', accountName);
 
       // Fetch account data to verify account exists
       console.log('[WalletProvider] Fetching account data for:', accountName);
@@ -302,27 +249,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (!account) {
         console.log('[WalletProvider] Account not found');
         throw new Error(`Account '${accountName}' not found`);
-      }
-
-      // Now authenticate with HiveKeychain by requesting a sign operation
-      console.log('[WalletProvider] Authenticating with HiveKeychain');
-      const authMessage = `Login to Hive Social Platform\nTimestamp: ${Date.now()}\nAccount: ${accountName}`;
-
-      try {
-        const signResult = await keychain.requestSignBuffer(
-          accountName,
-          authMessage,
-          'Posting'
-        );
-
-        if (!signResult || !signResult.success) {
-          throw new Error('Authentication failed. Please try again.');
-        }
-
-        console.log('[WalletProvider] Authentication successful:', signResult);
-      } catch (signError) {
-        console.error('[WalletProvider] Authentication error:', signError);
-        throw new Error('Failed to authenticate with HiveKeychain. Please make sure you approve the signing request.');
       }
 
       // Ensure the account object has the required properties
@@ -417,18 +343,38 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   }, [queryClient, successNotification, errorNotification]);
 
-  const disconnect = useCallback(() => {
-    dispatch({ type: 'DISCONNECT' });
+  const disconnect = useCallback(async () => {
+    try {
+      dispatch({ type: 'DISCONNECT' });
 
-    // Clear saved connection
-    localStorage.removeItem(STORAGE_KEYS.WALLET_USERNAME);
+      // Clear saved connection
+      localStorage.removeItem(STORAGE_KEYS.WALLET_USERNAME);
+      localStorage.removeItem('hive_keychain_last_username');
 
-    // Clear all user-related cache
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_BALANCE });
-    queryClient.removeQueries({ queryKey: QUERY_KEYS.USER_BALANCE });
+      // Clear all user-related cache
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_BALANCE });
+      queryClient.removeQueries({ queryKey: QUERY_KEYS.USER_BALANCE });
 
-    successNotification('Wallet disconnected');
-  }, [queryClient, successNotification]);
+      // Also clear any other user-related queries
+      queryClient.invalidateQueries({ queryKey: ['user-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['user-followers'] });
+      queryClient.invalidateQueries({ queryKey: ['user-following'] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+
+      successNotification('Wallet disconnected successfully');
+    } catch (error) {
+      console.error('Error during wallet disconnect:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to disconnect wallet properly';
+      errorNotification(errorMessage);
+      
+      // Even if there's an error, still try to clean up what we can
+      dispatch({ type: 'DISCONNECT' });
+      localStorage.removeItem(STORAGE_KEYS.WALLET_USERNAME);
+      localStorage.removeItem('hive_keychain_last_username');
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_BALANCE });
+      queryClient.removeQueries({ queryKey: QUERY_KEYS.USER_BALANCE });
+    }
+  }, [queryClient, successNotification, errorNotification]);
 
   const signTransaction = useCallback(async (
     operations: Operation[],

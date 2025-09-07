@@ -1,5 +1,6 @@
 // src/hooks/useWalletOperations.ts
 import { useCallback } from 'react';
+import { useNotification } from '@/providers/NotificationProvider';
 
 interface TransferParams {
   username: string;
@@ -29,17 +30,23 @@ export interface KeychainResponse {
 }
 
 export function useWalletOperations() {
+  const { success: successNotification, error: errorNotification } = useNotification();
+
   const transfer = useCallback(
     async (params: TransferParams, authMethod: 'keychain' | 'hivesigner' | null) => {
       if (!authMethod) {
-        throw new Error('No wallet connected');
+        const errorMsg = 'No wallet connected';
+        errorNotification(errorMsg);
+        throw new Error(errorMsg);
       }
 
       if (authMethod === 'keychain') {
         // Hive Keychain transfer
         return new Promise<KeychainResponse>((resolve, reject) => {
           if (!(window as any).hive_keychain) {
-            reject(new Error('Hive Keychain not installed'));
+            const errorMsg = 'Hive Keychain not installed';
+            errorNotification(errorMsg);
+            reject(new Error(errorMsg));
             return;
           }
 
@@ -51,10 +58,14 @@ export function useWalletOperations() {
             params.memo || '',
             params.currency,
             (response: KeychainResponse) => {
-              if (response.success) {
+              console.log('[useWalletOperations] Transfer response:', response);
+              if (response && response.success) {
+                successNotification(`Successfully sent ${params.amount} ${params.currency} to @${params.to}`);
                 resolve(response);
               } else {
-                reject(new Error(response.message || 'Transfer failed'));
+                const errorMessage = response?.message || response?.error || 'Transfer failed';
+                errorNotification(errorMessage);
+                reject(new Error(errorMessage));
               }
             }
           );
@@ -62,23 +73,29 @@ export function useWalletOperations() {
       } else {
         // HiveSigner transfer
         // This would need to be implemented with the proper HiveSigner client
-        throw new Error('HiveSigner transfer not implemented');
+        const errorMsg = 'HiveSigner transfer not implemented';
+        errorNotification(errorMsg);
+        throw new Error(errorMsg);
       }
     },
-    []
+    [successNotification, errorNotification]
   );
 
   const signBuffer = useCallback(
     async (params: SignBufferParams, authMethod: 'keychain' | 'hivesigner' | null) => {
       if (!authMethod) {
-        throw new Error('No wallet connected');
+        const errorMsg = 'No wallet connected';
+        errorNotification(errorMsg);
+        throw new Error(errorMsg);
       }
 
       if (authMethod === 'keychain') {
         // Hive Keychain sign buffer
         return new Promise<KeychainResponse>((resolve, reject) => {
           if (!(window as any).hive_keychain) {
-            reject(new Error('Hive Keychain not installed'));
+            const errorMsg = 'Hive Keychain not installed';
+            errorNotification(errorMsg);
+            reject(new Error(errorMsg));
             return;
           }
 
@@ -88,10 +105,13 @@ export function useWalletOperations() {
             params.message,
             params.keyType,
             (response: KeychainResponse) => {
-              if (response.success) {
+              if (response && response.success) {
+                successNotification('Successfully signed message');
                 resolve(response);
               } else {
-                reject(new Error(response.message || 'Sign buffer failed'));
+                const errorMessage = response?.message || response?.error || 'Sign buffer failed';
+                errorNotification(errorMessage);
+                reject(new Error(errorMessage));
               }
             }
           );
@@ -99,23 +119,29 @@ export function useWalletOperations() {
       } else {
         // HiveSigner sign buffer
         // This would need to be implemented with the proper HiveSigner client
-        throw new Error('HiveSigner sign buffer not implemented');
+        const errorMsg = 'HiveSigner sign buffer not implemented';
+        errorNotification(errorMsg);
+        throw new Error(errorMsg);
       }
     },
-    []
+    [successNotification, errorNotification]
   );
 
   const broadcast = useCallback(
     async (username: string, operations: any[], keyType: 'Posting' | 'Active', authMethod: 'keychain' | 'hivesigner' | null) => {
       if (!authMethod) {
-        throw new Error('No wallet connected');
+        const errorMsg = 'No wallet connected';
+        errorNotification(errorMsg);
+        throw new Error(errorMsg);
       }
 
       if (authMethod === 'keychain') {
         // Hive Keychain broadcast
         return new Promise<KeychainResponse>((resolve, reject) => {
           if (!(window as any).hive_keychain) {
-            reject(new Error('Hive Keychain not installed'));
+            const errorMsg = 'Hive Keychain not installed';
+            errorNotification(errorMsg);
+            reject(new Error(errorMsg));
             return;
           }
 
@@ -125,10 +151,13 @@ export function useWalletOperations() {
             operations,
             keyType,
             (response: KeychainResponse) => {
-              if (response.success) {
+              if (response && response.success) {
+                successNotification('Transaction broadcast successfully');
                 resolve(response);
               } else {
-                reject(new Error(response.message || 'Broadcast failed'));
+                const errorMessage = response?.message || response?.error || 'Broadcast failed';
+                errorNotification(errorMessage);
+                reject(new Error(errorMessage));
               }
             }
           );
@@ -136,10 +165,12 @@ export function useWalletOperations() {
       } else {
         // HiveSigner broadcast
         // This would need to be implemented with the proper HiveSigner client
-        throw new Error('HiveSigner broadcast not implemented');
+        const errorMsg = 'HiveSigner broadcast not implemented';
+        errorNotification(errorMsg);
+        throw new Error(errorMsg);
       }
     },
-    []
+    [successNotification, errorNotification]
   );
 
   return {

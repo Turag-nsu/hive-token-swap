@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,7 +27,9 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils';
 import { useTheme } from '@/providers/ThemeProvider';
+import { useUser } from '@/hooks/useUser';
 import { useWallet } from '@/hooks/useWallet';
+
 
 // Create properly typed motion components
 const MotionHeader = motion.header;
@@ -100,13 +103,15 @@ const mobileMenuVariants = {
 };
 
 export function Header() {
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const { user, isConnected, isConnecting, connect, disconnect, keychainInstalled } = useWallet();
+  const { isAuthenticated, username } = useUser();
+  const { disconnect, keychainInstalled, isConnecting } = useWallet();
 
   // Set isMounted to true after the component mounts on the client
   useEffect(() => {
@@ -156,12 +161,9 @@ export function Header() {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  const handleConnect = async () => {
-    try {
-      await connect();
-    } catch (error) {
-      console.error('Header: connect failed', error);
-    }
+  const handleConnect = () => {
+    // Redirect to social page for wallet connection
+    router.push('/social');
   };
 
   const handleDisconnect = async () => {
@@ -336,7 +338,7 @@ export function Header() {
               {/* Wallet Connection */}
               <MotionDiv variants={itemVariants}>
                 {isMounted ? (
-                  isConnected ? (
+                  isAuthenticated ? (
                     <div className="relative">
                       <MotionDiv
                         whileHover={{ scale: 1.02 }}
@@ -351,7 +353,7 @@ export function Header() {
                           className="flex items-center space-x-2 rounded-xl bg-gradient-to-r from-blue-500/30 via-purple-500/30 to-cyan-500/30 backdrop-blur-sm border border-blue-500/40 hover:from-blue-500/40 hover:via-purple-500/40 hover:to-cyan-500/40 transition-all duration-300 shadow-lg shadow-blue-500/30"
                         >
                           <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse"></div>
-                          <span className="font-medium text-cyan-500">{formatWalletAddress(user?.name || null)}</span>
+                          <span className="font-medium text-cyan-500">{formatWalletAddress(username || null)}</span>
                           <MotionDiv
                             animate={{ rotate: isProfileOpen ? 180 : 0 }}
                             transition={{ duration: 0.3 }}
@@ -376,7 +378,7 @@ export function Header() {
                                 id="profile-dropdown"
                                 className="px-3 py-2 text-xs text-muted-foreground border-b border-border/50"
                               >
-                                Connected as @{user?.name}
+                                Connected as @{username}
                               </div>
                               <button className="flex w-full items-center space-x-3 rounded-xl px-3 py-2.5 text-sm hover:bg-accent transition-all duration-200 group">
                                 <User className="h-4 w-4 text-blue-500 group-hover:text-cyan-500" />
@@ -530,11 +532,11 @@ export function Header() {
                       </button>
 
                       {/* Wallet Actions */}
-                      {isConnected ? (
+                      {isAuthenticated ? (
                         <div className="space-y-3">
                           <div className="px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 backdrop-blur-sm border border-blue-500/30">
                             <div className="text-sm font-medium text-cyan-500 truncate">
-                              Connected as @{user?.name}
+                              Connected as @{username}
                             </div>
                           </div>
                           <Button

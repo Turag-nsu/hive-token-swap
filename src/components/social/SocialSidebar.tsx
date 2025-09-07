@@ -8,8 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useUser } from '@/hooks/useUser';
 import { keychain } from '@/lib/blockchain/keychain';
-// hiveSocialAPI import is not used, so we'll remove it
-// updateProfile import is not used, so we'll remove it
+import { useWallet } from '@/hooks/useWallet';
 
 export function SocialSidebar() {
     const { 
@@ -18,12 +17,13 @@ export function SocialSidebar() {
       userProfile, 
       login, 
       logout, 
-      // updateProfile is not used, so we'll remove it
       isLoading, 
       isFetching,
       refreshUser,
       error
     } = useUser();
+    
+    const { connect: walletConnect } = useWallet();
     
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [loginUsername, setLoginUsername] = useState('');
@@ -86,6 +86,14 @@ export function SocialSidebar() {
                 console.log('Calling auth store login...');
                 login(loginUsername.trim(), 'keychain', undefined);
                 console.log('Auth store login completed');
+
+                // Also update the wallet connection state
+                // This ensures consistency between the auth store and wallet provider
+                try {
+                    await walletConnect(loginUsername.trim());
+                } catch (walletError) {
+                    console.warn('Failed to sync with wallet provider:', walletError);
+                }
 
                 toast.success('Successfully logged in with Hive Keychain!');
                 setLoginUsername('');
