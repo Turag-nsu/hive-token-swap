@@ -1,8 +1,8 @@
 Hive Social Platform - Project Status Report
 
-Prepared for: Faculty Review
+Prepared for:  Review
 Date: September 7, 2025
-Developer: Turag-nsu
+Developer: Md. Abdullah Al Noman Turag, Abdulla Al Nayem, Prithi Zaglul, Nusrat Jahan Tisha
 
 Project Overview:
 The Hive Social Platform is a decentralized social media application built on the Hive blockchain ecosystem. Unlike traditional centralized platforms, this system gives users true ownership of their content while providing integrated financial features. The platform combines familiar social networking capabilities with cryptocurrency wallet management and token swapping functionality.
