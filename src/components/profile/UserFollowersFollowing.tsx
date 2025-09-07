@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from 'react';
+import { User, Users } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useFollowers } from '@/hooks/useFollowers';
 import { useFollowing } from '@/hooks/useFollowing';
 import { useTheme } from '@/providers/ThemeProvider';
-import { User, Users } from 'lucide-react';
 
 interface UserFollowersFollowingProps {
   username: string;

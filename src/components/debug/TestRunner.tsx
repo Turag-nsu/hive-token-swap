@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Play, Loader2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Play, Loader2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
 import { keychain } from '@/lib/blockchain/keychain';
 import { useUser } from '@/hooks/useUser';
@@ -11,8 +11,8 @@ import { useUser } from '@/hooks/useUser';
 interface TestResult {
   name: string;
   status: 'pending' | 'passing' | 'failing';
-  error?: string;
-  details?: string;
+  error?: string | undefined;
+  details?: string | undefined;
 }
 
 export function TestRunner() {
@@ -49,7 +49,7 @@ export function TestRunner() {
     try {
       // Test 1: HiveSocialAPI connection
       try {
-        await hiveSocialAPI.getTrendingPosts({ limit: 1 });
+        await hiveSocialAPI.getTrendingPosts('', 1);
         updateTestResult(7, { status: 'passing', details: 'API connection successful' });
       } catch (error) {
         updateTestResult(7, { status: 'failing', error: 'API connection failed: ' + (error as Error).message });
@@ -293,7 +293,7 @@ export function TestRunner() {
   const updateTestResult = (index: number, result: Partial<TestResult>) => {
     setTestResults(prev => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], ...result };
+      updated[index] = { ...updated[index], ...result } as TestResult;
       return updated;
     });
   };

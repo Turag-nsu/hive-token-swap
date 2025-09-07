@@ -1,9 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { toast } from 'sonner';
 import { SocialFeed } from './SocialFeed';
 import { useUser } from '@/hooks/useUser';
-import { useSocialFeed, useVotePost, usePrefetchPost } from '@/hooks/useSocialFeed';
+import { useSocialFeed, useVotePost } from '@/hooks/useSocialFeed';
 import { hiveKeychainAPI } from '@/lib/blockchain/keychain';
-import { toast } from 'sonner';
 
 // Mock all the hooks and dependencies
 jest.mock('@/hooks/useUser');
@@ -48,7 +48,6 @@ Object.defineProperty(window, 'hive_keychain', {
 const mockUseUser = useUser as jest.Mock;
 const mockUseSocialFeed = useSocialFeed as jest.Mock;
 const mockUseVotePost = useVotePost as jest.Mock;
-const mockUsePrefetchPost = usePrefetchPost as jest.Mock;
 const mockHiveKeychainAPI = hiveKeychainAPI as jest.Mocked<typeof hiveKeychainAPI>;
 const mockToast = toast as jest.Mocked<typeof toast>;
 
@@ -114,7 +113,6 @@ describe('SocialFeed', () => {
       mutate: jest.fn(),
       isPending: false,
     });
-    mockUsePrefetchPost.mockReturnValue(jest.fn());
   });
 
   it('renders social feed with posts', () => {
@@ -134,8 +132,11 @@ describe('SocialFeed', () => {
 
     render(<SocialFeed />);
     
-    const upvoteButton = screen.getAllByRole('button', { name: /5/ })[0];
-    fireEvent.click(upvoteButton);
+    const upvoteButtons = screen.getAllByRole('button', { name: /5/ });
+    const upvoteButton = upvoteButtons[0];
+    if (upvoteButton) {
+      fireEvent.click(upvoteButton);
+    }
     
     // Wait for confirmation dialog
     await waitFor(() => {
@@ -146,8 +147,11 @@ describe('SocialFeed', () => {
   it('handles reply functionality', () => {
     render(<SocialFeed />);
     
-    const replyButton = screen.getAllByRole('button', { name: /Reply/ })[0];
-    fireEvent.click(replyButton);
+    const replyButtons = screen.getAllByRole('button', { name: /Reply/ });
+    const replyButton = replyButtons[0];
+    if (replyButton) {
+      fireEvent.click(replyButton);
+    }
     
     expect(screen.getByTestId('comment-modal')).toBeInTheDocument();
   });
@@ -158,8 +162,11 @@ describe('SocialFeed', () => {
     
     render(<SocialFeed />);
     
-    const shareButton = screen.getAllByRole('button', { name: '' })[0]; // Share button has no text
-    fireEvent.click(shareButton);
+    const shareButtons = screen.getAllByRole('button', { name: '' }); // Share button has no text
+    const shareButton = shareButtons[0];
+    if (shareButton) {
+      fireEvent.click(shareButton);
+    }
     
     await waitFor(() => {
       expect(mockToast.success).toHaveBeenCalledWith('Post shared!');
@@ -172,8 +179,11 @@ describe('SocialFeed', () => {
     
     render(<SocialFeed />);
     
-    const shareButton = screen.getAllByRole('button', { name: '' })[0]; // Share button has no text
-    fireEvent.click(shareButton);
+    const shareButtons = screen.getAllByRole('button', { name: '' }); // Share button has no text
+    const shareButton = shareButtons[0];
+    if (shareButton) {
+      fireEvent.click(shareButton);
+    }
     
     await waitFor(() => {
       expect(mockToast.success).toHaveBeenCalledWith('Link copied to clipboard!');
@@ -185,8 +195,11 @@ describe('SocialFeed', () => {
     
     render(<SocialFeed />);
     
-    const followButton = screen.getAllByRole('button', { name: /Follow/ })[0];
-    fireEvent.click(followButton);
+    const followButtons = screen.getAllByRole('button', { name: /Follow/ });
+    const followButton = followButtons[0];
+    if (followButton) {
+      fireEvent.click(followButton);
+    }
     
     await waitFor(() => {
       expect(mockHiveKeychainAPI.followUser).toHaveBeenCalledWith('testuser', 'author1');
@@ -195,21 +208,18 @@ describe('SocialFeed', () => {
   });
 
   it('handles unfollow functionality', async () => {
-    // Mock the following state
-    const SocialFeedWithFollowing = () => {
-      // We can't easily mock the internal state, so we'll test the API call directly
-      return <SocialFeed />;
-    };
-    
     mockHiveKeychainAPI.unfollowUser.mockResolvedValue({ success: true });
     
     render(<SocialFeed />);
     
-    const followButton = screen.getAllByRole('button', { name: /Follow/ })[0];
-    fireEvent.click(followButton);
-    
-    // Click again to simulate unfollow
-    fireEvent.click(followButton);
+    const followButtons = screen.getAllByRole('button', { name: /Follow/ });
+    const followButton = followButtons[0];
+    if (followButton) {
+      fireEvent.click(followButton);
+      
+      // Click again to simulate unfollow
+      fireEvent.click(followButton);
+    }
     
     // We can't easily test the state change, but we can test the API calls
     await waitFor(() => {
@@ -220,8 +230,11 @@ describe('SocialFeed', () => {
   it('handles message functionality', () => {
     render(<SocialFeed />);
     
-    const messageButton = screen.getAllByRole('button', { name: '' })[1]; // Message button
-    fireEvent.click(messageButton);
+    const messageButtons = screen.getAllByRole('button', { name: '' }); // Message button
+    const messageButton = messageButtons[1]; // Message button
+    if (messageButton) {
+      fireEvent.click(messageButton);
+    }
     
     expect(mockToast.info).toHaveBeenCalledWith('Messaging functionality for @author1 would open here');
   });
@@ -229,8 +242,11 @@ describe('SocialFeed', () => {
   it('handles more functionality', () => {
     render(<SocialFeed />);
     
-    const moreButton = screen.getAllByRole('button', { name: '' })[2]; // More button
-    fireEvent.click(moreButton);
+    const moreButtons = screen.getAllByRole('button', { name: '' }); // More button
+    const moreButton = moreButtons[2]; // More button
+    if (moreButton) {
+      fireEvent.click(moreButton);
+    }
     
     expect(mockToast.info).toHaveBeenCalledWith('More options would appear here');
   });

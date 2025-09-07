@@ -242,7 +242,7 @@ export function Sidebar({ collapsed: controlledCollapsed }: SidebarProps) {
           {/* Bottom Navigation */}
           <div className="border-t p-4 backdrop-blur-sm bg-background/50 animate-fade-in-up delay-300">
             <nav className="space-y-1">
-              {bottomNavigation.map((item, index) => (
+              {bottomNavigation.map((item) => (
                 <NavItem
                   key={item.href}
                   item={item}

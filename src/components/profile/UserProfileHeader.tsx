@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { User, MapPin, Link, Calendar, RefreshCw } from 'lucide-react';
+import { EditProfileModal } from './EditProfileModal';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { UserProfile } from '@/types/social';
 import { useTheme } from '@/providers/ThemeProvider';
-import { EditProfileModal } from './EditProfileModal';
 
 interface UserProfileHeaderProps {
   profile: UserProfile;

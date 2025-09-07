@@ -5,8 +5,7 @@ import type {
   HiveEngineBalance, 
   Market, 
   Order, 
-  Trade,
-  ApiResponse 
+  Trade
 } from '@/types';
 
 interface SwapQuote {

@@ -9,6 +9,7 @@ import parser from '@typescript-eslint/parser';
 export default [
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
+    ignores: ['jest.config.js'], // Exclude jest.config.js from linting
     languageOptions: {
       parser,
       parserOptions: {
@@ -42,6 +43,6 @@ export default [
     },
   },
   {
-    ignores: ['postcss.config.js', 'tailwind.config.js', '.next/**', 'eslint.config.js'],
+    ignores: ['postcss.config.js', 'tailwind.config.js', '.next/**', 'eslint.config.js', 'jest.config.js'],
   },
 ];

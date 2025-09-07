@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ExternalLink, User } from 'lucide-react';
+import Link from 'next/link';
 import { TestRunner } from '@/components/debug/TestRunner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { ExternalLink, User, Calendar, Hash, TrendingUp, Wallet, Users } from 'lucide-react';
-import Link from 'next/link';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
 import { useUser } from '@/hooks/useUser';
 

@@ -137,7 +137,7 @@ export function AccountManager({ username, authMethod }: AccountManagerProps) {
             <TrendingUp className="h-5 w-5 text-blue-500" />
             <div>
               <div className="text-sm text-muted-foreground">Hive Power</div>
-              <div className="font-semibold">{balances ? balances.hive_power : `~${(parseFloat(account.vesting_shares.split(' ')[0]) / 1000).toFixed(0)} HP`}</div>
+              <div className="font-semibold">{balances ? balances.hive_power : `~${(parseFloat(account.vesting_shares?.split(' ')[0] || '0') / 1000).toFixed(0)} HP`}</div>
             </div>
           </div>
         </div>

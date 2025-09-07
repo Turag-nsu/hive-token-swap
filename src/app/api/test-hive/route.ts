@@ -10,12 +10,12 @@ const HIVE_NODES = [
   'https://rpc.ecency.com'
 ];
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     console.log('Testing Hive API on server side...');
     
     // Create dhive client for server-side use ONLY
-    const client = new Client(HIVE_NODES[0], {
+    const client = new Client(HIVE_NODES[0]!, { // Add non-null assertion
       timeout: 15000,
       failoverThreshold: 3,
       consoleOnFailover: true
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
 }
 
 // Handle OPTIONS requests for CORS preflight
-export async function OPTIONS(request: Request) {
+export async function OPTIONS() {
   const response = new NextResponse(null, { status: 204 });
   response.headers.set('Access-Control-Allow-Origin', '*');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

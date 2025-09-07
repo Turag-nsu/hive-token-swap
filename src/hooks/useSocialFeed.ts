@@ -1,17 +1,32 @@
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
 import { SocialFeedItem } from '@/types/social';
 import { QUERY_KEYS } from '@/lib/query-utils';
+import { toast } from 'sonner';
 
-// Hook for infinite scrolling social feed
+// Define the type for page parameters
+interface PageParam {
+  startAuthor?: string;
+  startPermlink?: string;
+}
+
+// Enhanced React Query hook for social feed with better caching
 export const useSocialFeed = (filters: { sortBy?: string; tag?: string; limit?: number }) => {
-  return useInfiniteQuery({
+  return useInfiniteQuery<SocialFeedItem[], Error, SocialFeedItem[], [string, string, { sortBy?: string; tag?: string; limit?: number }], PageParam>({
     queryKey: [QUERY_KEYS.SOCIAL_FEED, 'list', filters],
     queryFn: async ({ pageParam }) => {
       const { sortBy, tag, limit } = filters;
       
       if (sortBy === 'trending') {
         return await hiveSocialAPI.getTrendingPosts(
+          tag || '',
+          limit || 20,
+          pageParam?.startAuthor,
+          pageParam?.startPermlink
+        );
+      } else if (sortBy === 'hot') {
+        return await hiveSocialAPI.getHotPosts(
           tag || '',
           limit || 20,
           pageParam?.startAuthor,
@@ -30,132 +45,103 @@ export const useSocialFeed = (filters: { sortBy?: string; tag?: string; limit?: 
       if (lastPage.length === 0) return undefined;
       
       const lastPost = lastPage[lastPage.length - 1];
+      if (!lastPost) return undefined;
+      
       return {
         startAuthor: lastPost.author,
         startPermlink: lastPost.permlink,
       };
     },
-    initialPageParam: undefined,
-    staleTime: 30000, // 30 seconds
+    initialPageParam: undefined as unknown as PageParam,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchInterval: false,
+    retry: 2, // Retry failed requests up to 2 times
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });
 };
 
-// Hook for individual post details
+// Enhanced React Query hook for post details with comments
 export const usePostDetail = (author: string, permlink: string) => {
-  return useQuery({
+  return useQuery<SocialFeedItem, Error>({
     queryKey: [QUERY_KEYS.POST_DETAIL, author, permlink],
     queryFn: () => hiveSocialAPI.getPostWithVotesAndReplies(author, permlink),
-    staleTime: 10000, // 10 seconds for time-sensitive data like votes
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
 
-// Hook for prefetching post details
-export const usePrefetchPost = () => {
-  const queryClient = useQueryClient();
-  
-  return (author: string, permlink: string) => {
-    queryClient.prefetchQuery({
-      queryKey: [QUERY_KEYS.POST_DETAIL, author, permlink],
-      queryFn: () => hiveSocialAPI.getPostWithVotesAndReplies(author, permlink),
-      staleTime: 10000,
-    });
-  };
-};
-
-// Hook for posting comments
-export const usePostComment = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (commentData: {
-      parent_author: string;
-      parent_permlink: string;
-      author: string;
-      permlink: string;
-      title: string;
-      body: string;
-      json_metadata: string;
-    }) => {
-      return await hiveSocialAPI.submitPost(commentData);
-    },
-    onSuccess: (data, variables) => {
-      // Invalidate and refetch the parent post and its comments
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.POST_DETAIL, variables.parent_author, variables.parent_permlink]
-      });
-      
-      // Also invalidate the feed to update comment counts
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.SOCIAL_FEED]
-      });
-    },
-  });
-};
-
-// Hook for voting on posts
+// Enhanced React Query mutation for voting with optimistic updates
 export const useVotePost = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (voteData: {
-      voter: string;
-      author: string;
-      permlink: string;
-      weight: number;
-    }) => {
+    mutationFn: async (voteData: { voter: string; author: string; permlink: string; weight: number }) => {
       return await hiveSocialAPI.votePost(voteData);
     },
     onMutate: async (voteData) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: [QUERY_KEYS.POST_DETAIL, voteData.author, voteData.permlink]
-      });
+      await queryClient.cancelQueries({ queryKey: [QUERY_KEYS.SOCIAL_FEED] });
       
       // Snapshot the previous value
-      const previousPost = queryClient.getQueryData(
-        [QUERY_KEYS.POST_DETAIL, voteData.author, voteData.permlink]
-      );
+      const previousFeed = queryClient.getQueryData([QUERY_KEYS.SOCIAL_FEED]);
       
       // Optimistically update to the new value
-      queryClient.setQueryData(
-        [QUERY_KEYS.POST_DETAIL, voteData.author, voteData.permlink],
-        (old: SocialFeedItem | undefined) => {
+      queryClient.setQueriesData(
+        { queryKey: [QUERY_KEYS.SOCIAL_FEED] },
+        (old: any) => {
           if (!old) return old;
           
-          const isUpvote = voteData.weight > 0;
-          const isDownvote = voteData.weight < 0;
-          
           return {
             ...old,
-            upvotes: isUpvote ? old.upvotes + 1 : old.upvotes,
-            downvotes: isDownvote ? old.downvotes + 1 : old.downvotes,
-            isUpvoted: isUpvote,
-            isDownvoted: isDownvote,
-          };
-        }
-      );
-      
-      // Also update in the feed
-      queryClient.setQueriesData(
-        { queryKey: [QUERY_KEYS.SOCIAL_FEED] },
-        (old: any) => {
-          if (!old || !old.pages) return old;
-          
-          return {
-            ...old,
-            pages: old.pages.map((page: SocialFeedItem[]) => 
-              page.map((post: SocialFeedItem) => {
+            pages: old.pages.map((page: any) => 
+              page.map((post: any) => {
                 if (post.author === voteData.author && post.permlink === voteData.permlink) {
-                  const isUpvote = voteData.weight > 0;
-                  const isDownvote = voteData.weight < 0;
+                  // Check if user has already voted
+                  const existingVoteIndex = post.active_votes.findIndex((vote: any) => vote.voter === voteData.voter);
                   
-                  return {
-                    ...post,
-                    upvotes: isUpvote ? post.upvotes + 1 : post.upvotes,
-                    downvotes: isDownvote ? post.downvotes + 1 : post.downvotes,
-                    isUpvoted: isUpvote,
-                    isDownvoted: isDownvote,
-                  };
+                  if (existingVoteIndex !== -1) {
+                    // Update existing vote
+                    const updatedVotes = [...post.active_votes];
+                    updatedVotes[existingVoteIndex] = {
+                      ...updatedVotes[existingVoteIndex],
+                      percent: voteData.weight
+                    };
+                    
+                    // Update vote counts
+                    const upvotes = updatedVotes.filter((vote: any) => vote.percent > 0).length;
+                    const downvotes = updatedVotes.filter((vote: any) => vote.percent < 0).length;
+                    
+                    return {
+                      ...post,
+                      active_votes: updatedVotes,
+                      upvotes,
+                      downvotes
+                    };
+                  } else {
+                    // Add new vote
+                    const newVote = {
+                      voter: voteData.voter,
+                      percent: voteData.weight
+                    };
+                    
+                    const updatedVotes = [...post.active_votes, newVote];
+                    const upvotes = updatedVotes.filter((vote: any) => vote.percent > 0).length;
+                    const downvotes = updatedVotes.filter((vote: any) => vote.percent < 0).length;
+                    
+                    return {
+                      ...post,
+                      active_votes: updatedVotes,
+                      upvotes,
+                      downvotes
+                    };
+                  }
                 }
                 return post;
               })
@@ -164,47 +150,66 @@ export const useVotePost = () => {
         }
       );
       
-      return { previousPost };
+      return { previousFeed };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       // Rollback to the previous value
-      if (context?.previousPost) {
-        queryClient.setQueryData(
-          [QUERY_KEYS.POST_DETAIL, variables.author, variables.permlink],
-          context.previousPost
-        );
+      if (context?.previousFeed) {
+        queryClient.setQueryData([QUERY_KEYS.SOCIAL_FEED], context.previousFeed);
       }
-      
-      // Also rollback in the feed
-      queryClient.setQueriesData(
-        { queryKey: [QUERY_KEYS.SOCIAL_FEED] },
-        (old: any) => {
-          if (!old || !old.pages) return old;
-          
-          return {
-            ...old,
-            pages: old.pages.map((page: SocialFeedItem[]) => 
-              page.map((post: SocialFeedItem) => {
-                if (post.author === variables.author && post.permlink === variables.permlink) {
-                  return context?.previousPost || post;
-                }
-                return post;
-              })
-            )
-          };
-        }
-      );
     },
-    onSuccess: (data, variables) => {
-      // Refetch the post to get the actual data from the blockchain
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.POST_DETAIL, variables.author, variables.permlink]
-      });
-      
-      // Also invalidate the feed to ensure consistency
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.SOCIAL_FEED]
-      });
+    onSettled: () => {
+      // Refetch feed after mutation
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SOCIAL_FEED] });
     },
   });
+};
+
+// Enhanced React Query mutation for posting comments
+export const usePostComment = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (commentData: any) => {
+      return await hiveSocialAPI.submitPost(commentData);
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate and refetch post details
+      queryClient.invalidateQueries({ 
+        queryKey: [QUERY_KEYS.POST_DETAIL, variables.parent_author, variables.parent_permlink] 
+      });
+      
+      // Also invalidate the social feed to show updated comment counts
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SOCIAL_FEED] });
+    },
+    onError: (error: any) => {
+      console.error('Error posting comment:', error);
+      toast.error(error.message || 'Failed to post comment');
+    },
+  });
+};
+
+// Enhanced prefetching hooks for better UX
+export const usePrefetchPost = () => {
+  const queryClient = useQueryClient();
+  
+  return useCallback((author: string, permlink: string) => {
+    queryClient.prefetchQuery({
+      queryKey: [QUERY_KEYS.POST_DETAIL, author, permlink],
+      queryFn: () => hiveSocialAPI.getPostWithVotesAndReplies(author, permlink),
+      staleTime: 3 * 60 * 1000, // 3 minutes
+    });
+  }, [queryClient]);
+};
+
+export const usePrefetchUserProfile = () => {
+  const queryClient = useQueryClient();
+  
+  return useCallback((username: string) => {
+    queryClient.prefetchQuery({
+      queryKey: [QUERY_KEYS.USER_PROFILE, username],
+      queryFn: () => hiveSocialAPI.getUserProfile(username),
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+  }, [queryClient]);
 };

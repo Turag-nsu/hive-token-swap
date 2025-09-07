@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@/hooks/useUser';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { RefreshCw } from 'lucide-react';
 import { UserProfileHeader } from './UserProfileHeader';
 import { UserProfileStats } from './UserProfileStats';
 import { UserProfileActions } from './UserProfileActions';
 import { GiftSendModal } from './GiftSendModal';
 import { UserPosts } from './UserPosts';
 import { UserFollowersFollowing } from './UserFollowersFollowing';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useUser } from '@/hooks/useUser';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { RefreshCw } from 'lucide-react';
 import { UserProfile as UserProfileType } from '@/types/social';
 import { useTheme } from '@/providers/ThemeProvider';
 

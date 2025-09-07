@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from 'react';
+import { Wallet, LogIn, User, Shield, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useUser } from '@/hooks/useUser';
-import { Wallet, LogIn, User, Shield, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
 import { keychain } from '@/lib/blockchain/keychain';
-import { hiveSocialAPI } from '@/lib/api/hive-social';
-import { UserProfile } from '@/types/social';
+import { useWallet } from '@/hooks/useWallet';
 
 export function SocialSidebar() {
     const { 
@@ -18,12 +17,13 @@ export function SocialSidebar() {
       userProfile, 
       login, 
       logout, 
-      updateProfile, 
       isLoading, 
       isFetching,
       refreshUser,
       error
     } = useUser();
+    
+    const { connect: walletConnect } = useWallet();
     
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [loginUsername, setLoginUsername] = useState('');
@@ -87,6 +87,14 @@ export function SocialSidebar() {
                 login(loginUsername.trim(), 'keychain', undefined);
                 console.log('Auth store login completed');
 
+                // Also update the wallet connection state
+                // This ensures consistency between the auth store and wallet provider
+                try {
+                    await walletConnect(loginUsername.trim());
+                } catch (walletError) {
+                    console.warn('Failed to sync with wallet provider:', walletError);
+                }
+
                 toast.success('Successfully logged in with Hive Keychain!');
                 setLoginUsername('');
 
@@ -122,13 +130,14 @@ export function SocialSidebar() {
             await refreshUser();
             toast.success('Profile refreshed successfully');
         } catch (error) {
+            console.error('Error refreshing profile:', error);
             toast.error('Failed to refresh profile');
         }
     };
 
     if (isAuthenticated && username) {
         // Show user profile if available, otherwise show basic user info
-        const profile = userProfile as UserProfile | null;
+        const profile = userProfile;
         
         if (profile && !isLoading) {
             return (
@@ -148,7 +157,7 @@ export function SocialSidebar() {
                                 disabled={isFetching}
                                 className="absolute top-2 right-2"
                             >
-                                <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+                                <RefreshCw className={isFetching ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
                             </Button>
                         </CardHeader>
                         <CardContent className="space-y-3">
@@ -209,7 +218,7 @@ export function SocialSidebar() {
                                     <div className="w-12 h-2 bg-muted rounded-full mr-2 relative">
                                         <div
                                             className="h-full bg-primary rounded-full transition-all duration-300"
-                                            style={{ width: `${profile.votingPower || 100}%` }}
+                                            style={{ width: (profile.votingPower || 100) + '%' }}
                                         />
                                     </div>
                                     <span>{profile.votingPower || 100}%</span>
@@ -221,7 +230,7 @@ export function SocialSidebar() {
                                     <div className="w-12 h-2 bg-muted rounded-full mr-2 relative">
                                         <div
                                             className="h-full bg-destructive rounded-full transition-all duration-300"
-                                            style={{ width: `${profile.downvotePower || 100}%` }}
+                                            style={{ width: (profile.downvotePower || 100) + '%' }}
                                         />
                                     </div>
                                     <span>{profile.downvotePower || 100}%</span>

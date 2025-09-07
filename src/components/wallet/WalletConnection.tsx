@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Wallet,
   Download,
   AlertCircle,
   CheckCircle,
   ExternalLink,
-  Key,
   RefreshCw,
   User
 } from 'lucide-react';
@@ -23,6 +23,7 @@ interface WalletConnectionProps {
 }
 
 export function WalletConnection({ children }: WalletConnectionProps) {
+  const router = useRouter();
   const [isKeychainInstalled, setIsKeychainInstalled] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -78,8 +79,12 @@ export function WalletConnection({ children }: WalletConnectionProps) {
               const user = prompt('Enter your Hive username:');
               if (user) {
                 setUsername(user);
+                // Navigate to /social after successful connection
+                router.push('/social');
               } else {
                 setUsername('Hive User');
+                // Navigate to /social after successful connection
+                router.push('/social');
               }
             } else {
               setError(signResponse?.message || 'Failed to authenticate');
@@ -120,6 +125,9 @@ export function WalletConnection({ children }: WalletConnectionProps) {
     setAuthMethod('keychain');
     setError(null);
     setShowManualInput(false);
+    
+    // Navigate to /social after successful connection
+    router.push('/social');
   };
 
   const refreshPage = () => {

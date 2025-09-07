@@ -1,7 +1,7 @@
 // src/hooks/useUserPosts.ts
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
-import { SocialFeedItem } from '@/types/social';
+
 import { QUERY_KEYS } from '@/lib/query-utils';
 
 interface UseUserPostsParams {
@@ -12,7 +12,7 @@ interface UseUserPostsParams {
 export const useUserPosts = ({ username, limit = 10 }: UseUserPostsParams) => {
   return useInfiniteQuery({
     queryKey: [QUERY_KEYS.USER_POSTS, username],
-    queryFn: async ({ pageParam }) => {
+    queryFn: async () => {
       if (!username) return [];
       
       // For now, we're using getPostsByAuthor which fetches blog posts

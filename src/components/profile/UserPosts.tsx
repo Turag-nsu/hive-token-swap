@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { useUserPosts } from '@/hooks/useUserPosts';
-import { SocialFeedItem } from '@/types/social';
-import { useTheme } from '@/providers/ThemeProvider';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageCircle, ChevronUp, ChevronDown, DollarSign } from 'lucide-react';
 import { extractImageFromBody } from './profile-utils';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { useUserPosts } from '@/hooks/useUserPosts';
+import { useTheme } from '@/providers/ThemeProvider';
 
 interface UserPostsProps {
   username: string;

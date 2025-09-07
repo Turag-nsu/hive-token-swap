@@ -1,6 +1,6 @@
-import { Client, cryptoUtils } from '@hiveio/dhive';
-import { API_ENDPOINTS, HIVE_CONFIG, NETWORK_CONFIG } from '@/constants';
-import type { HiveAccount, Operation, TransferOperation } from '@/types';
+import { Client } from '@hiveio/dhive';
+import { API_ENDPOINTS, NETWORK_CONFIG } from '@/constants';
+import type { HiveAccount, Operation } from '@/types';
 
 interface DynamicGlobalProperties {
   head_block_number: number;
@@ -41,9 +41,8 @@ interface AccountHistory {
 }
 
 class HiveRPCClient {
-  private client: Client;
+  private client: Client | null = null;
   private backupNodes: string[];
-  private currentNodeIndex: number = 0;
 
   constructor() {
     this.backupNodes = [
@@ -53,18 +52,33 @@ class HiveRPCClient {
       'https://rpc.ecency.com',
       'https://techcoderx.com',
     ];
+  }
+
+  // Lazy initialization of client with window check
+  private getClient(): Client {
+    if (this.client) {
+      return this.client;
+    }
+
+    // Check if we're in browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
 
     this.client = new Client(this.backupNodes, {
       timeout: NETWORK_CONFIG.REQUEST_TIMEOUT,
       failoverThreshold: 3,
       consoleOnFailover: true,
     });
+
+    return this.client;
   }
 
   // Account operations
   async getAccount(username: string): Promise<HiveAccount | null> {
     try {
-      const accounts = await this.client.database.getAccounts([username]);
+      const client = this.getClient();
+      const accounts = await client.database.getAccounts([username]);
       return (accounts[0] as HiveAccount) || null;
     } catch (error) {
       console.error(`Failed to fetch account ${username}:`, error);
@@ -74,7 +88,8 @@ class HiveRPCClient {
 
   async getAccounts(usernames: string[]): Promise<HiveAccount[]> {
     try {
-      const accounts = await this.client.database.getAccounts(usernames);
+      const client = this.getClient();
+      const accounts = await client.database.getAccounts(usernames);
       return accounts as HiveAccount[];
     } catch (error) {
       console.error('Failed to fetch accounts:', error);
@@ -88,7 +103,8 @@ class HiveRPCClient {
     limit: number = 100
   ): Promise<AccountHistory[]> {
     try {
-      const history = await this.client.database.getAccountHistory(
+      const client = this.getClient();
+      const history = await client.database.getAccountHistory(
         account,
         from,
         limit
@@ -112,7 +128,8 @@ class HiveRPCClient {
   // Blockchain information
   async getDynamicGlobalProperties(): Promise<DynamicGlobalProperties> {
     try {
-      const props = await this.client.database.getDynamicGlobalProperties();
+      const client = this.getClient();
+      const props = await client.database.getDynamicGlobalProperties();
       return props as unknown as DynamicGlobalProperties;
     } catch (error) {
       console.error('Failed to fetch dynamic global properties:', error);
@@ -132,7 +149,8 @@ class HiveRPCClient {
 
   async getBlock(blockNumber: number): Promise<any> {
     try {
-      return await this.client.database.getBlock(blockNumber);
+      const client = this.getClient();
+      return await client.database.getBlock(blockNumber);
     } catch (error) {
       console.error(`Failed to fetch block ${blockNumber}:`, error);
       throw error;
@@ -141,7 +159,8 @@ class HiveRPCClient {
 
   async getTransaction(txId: string): Promise<any> {
     try {
-      return await this.client.database.getTransaction(txId);
+      const client = this.getClient();
+      return await client.database.getTransaction(txId);
     } catch (error) {
       console.error(`Failed to fetch transaction ${txId}:`, error);
       throw error;
@@ -223,7 +242,8 @@ class HiveRPCClient {
     }
 
     try {
-      return await this.client.broadcast.sendOperations(operations, privateKey);
+      const client = this.getClient();
+      return await client.broadcast.sendOperations(operations, privateKey);
     } catch (error) {
       console.error('Failed to broadcast transaction:', error);
       throw error;
@@ -262,11 +282,17 @@ class HiveRPCClient {
     for (const node of this.backupNodes) {
       const startTime = Date.now();
       try {
+        // Check if we're in browser environment for each client creation
+        if (typeof window === 'undefined') {
+          throw new Error('HiveRPCClient can only be used in browser environment');
+        }
+        
         const client = new Client([node], { timeout: 5000 });
         await client.database.getDynamicGlobalProperties();
         const latency = Date.now() - startTime;
         results.push({ node, healthy: true, latency });
       } catch (error) {
+        console.error(`Health check failed for node ${node}:`, error);
         const latency = Date.now() - startTime;
         results.push({ node, healthy: false, latency });
       }
@@ -323,6 +349,151 @@ class HiveRPCClient {
   }
 }
 
-// Create and export singleton instance
-export const hiveRPC = new HiveRPCClient();
+// Create and export singleton instance with lazy initialization
+let hiveRPCInstance: HiveRPCClient | null = null;
+
+export const hiveRPC = {
+  getInstance(): HiveRPCClient {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+
+    if (!hiveRPCInstance) {
+      hiveRPCInstance = new HiveRPCClient();
+    }
+    return hiveRPCInstance;
+  },
+
+  // Proxy all methods to the singleton instance with window checks
+  async getAccount(username: string): Promise<HiveAccount | null> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().getAccount(username);
+  },
+
+  async getAccounts(usernames: string[]): Promise<HiveAccount[]> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().getAccounts(usernames);
+  },
+
+  async getAccountHistory(
+    account: string,
+    from: number = -1,
+    limit: number = 100
+  ): Promise<AccountHistory[]> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().getAccountHistory(account, from, limit);
+  },
+
+  async getDynamicGlobalProperties(): Promise<DynamicGlobalProperties> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().getDynamicGlobalProperties();
+  },
+
+  async getCurrentBlockNumber(): Promise<number> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().getCurrentBlockNumber();
+  },
+
+  async getBlock(blockNumber: number): Promise<any> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().getBlock(blockNumber);
+  },
+
+  async getTransaction(txId: string): Promise<any> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().getTransaction(txId);
+  },
+
+  async getBalance(account: string): Promise<{ hive: string; hbd: string }> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().getBalance(account);
+  },
+
+  async getVestingShares(account: string): Promise<{
+    vesting_shares: string;
+    delegated_vesting_shares: string;
+    received_vesting_shares: string;
+  }> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().getVestingShares(account);
+  },
+
+  async estimateResourceCredits(operations: Operation[]): Promise<number> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().estimateResourceCredits(operations);
+  },
+
+  async broadcastTransaction(
+    operations: Operation[],
+    privateKey?: any
+  ): Promise<any> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().broadcastTransaction(operations, privateKey);
+  },
+
+  async validateTransaction(operations: Operation[]): Promise<boolean> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().validateTransaction(operations);
+  },
+
+  async checkNodeHealth(): Promise<{ node: string; healthy: boolean; latency: number }[]> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().checkNodeHealth();
+  },
+
+  async vestsToHivePower(vests: number): Promise<number> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().vestsToHivePower(vests);
+  },
+
+  async hivePowerToVests(hivePower: number): Promise<number> {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().hivePowerToVests(hivePower);
+  },
+
+  formatAsset(amount: number, symbol: 'HIVE' | 'HBD' | 'VESTS'): string {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().formatAsset(amount, symbol);
+  },
+
+  parseAsset(asset: string): { amount: number; symbol: string } {
+    if (typeof window === 'undefined') {
+      throw new Error('HiveRPCClient can only be used in browser environment');
+    }
+    return this.getInstance().parseAsset(asset);
+  }
+};
+
 export type { DynamicGlobalProperties, AccountHistory };

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
-import { ArrowRight, Rocket } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/Button';
 
 const MotionDiv = motion.div;
 

@@ -20,6 +20,7 @@ export function useWalletData(username: string, authMethod: 'keychain' | 'hivesi
       setAccount(null);
       setBalances(null);
       setLoading(false);
+      setError(null);
       return;
     }
 
@@ -42,7 +43,8 @@ export function useWalletData(username: string, authMethod: 'keychain' | 'hivesi
         setBalances(balanceData);
       } catch (err) {
         console.error('Error fetching account data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch account data');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch account data';
+        setError(errorMessage);
         setAccount(null);
         setBalances(null);
       } finally {
@@ -58,6 +60,7 @@ export function useWalletData(username: string, authMethod: 'keychain' | 'hivesi
     
     try {
       setLoading(true);
+      setError(null);
       const [accountData, balanceData] = await Promise.all([
         HiveAccountAPI.getAccount(username),
         HiveAccountAPI.getAccountBalances(username)
@@ -69,7 +72,8 @@ export function useWalletData(username: string, authMethod: 'keychain' | 'hivesi
       }
     } catch (err) {
       console.error('Error refreshing account data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to refresh account data');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh account data';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

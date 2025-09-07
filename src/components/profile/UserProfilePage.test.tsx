@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserProfilePage } from './UserProfilePage';
 import { ThemeProvider } from '@/providers/ThemeProvider';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useUser } from '@/hooks/useUser';
 import { useUserProfile } from '@/hooks/useUserProfile';
 

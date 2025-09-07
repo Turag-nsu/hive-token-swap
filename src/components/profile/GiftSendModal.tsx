@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from 'react';
+import { Gift, Coins } from 'lucide-react';
+import { toast } from 'sonner';
 import { 
   Modal, 
   ModalContent, 
@@ -16,9 +18,8 @@ import { FuturisticButton } from '@/components/ui/FuturisticButton';
 import { useWalletOperations } from '@/hooks/useWalletOperations';
 import { useUser } from '@/hooks/useUser';
 import { UserProfile } from '@/types/social';
-import { Gift, Coins, MessageCircle } from 'lucide-react';
-import { toast } from 'sonner';
 import { useTheme } from '@/providers/ThemeProvider';
+import { KeychainResponse } from '@/hooks/useWalletOperations';
 
 interface GiftSendModalProps {
   open: boolean;
@@ -51,7 +52,7 @@ export function GiftSendModal({ open, onOpenChange, recipient }: GiftSendModalPr
     setError('');
 
     try {
-      const result = await transfer(
+      const result: KeychainResponse = await transfer(
         {
           username,
           to: recipient.username,
@@ -71,7 +72,7 @@ export function GiftSendModal({ open, onOpenChange, recipient }: GiftSendModalPr
       } else {
         throw new Error(result.message || 'Failed to send gift');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error sending gift:', err);
       setError(err.message || 'Failed to send gift. Please try again.');
       toast.error('Failed to send gift. Please try again.');

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Card } from '@/components/ui/Card';
-import { useWalletOperations } from '@/hooks/useWalletOperations';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
 import { useTheme } from '@/providers/ThemeProvider';
 
@@ -24,7 +23,7 @@ export function EditProfileModal({
   onUpdateProfile
 }: EditProfileModalProps) {
   const { computedTheme } = useTheme();
-  const { broadcast } = useWalletOperations();
+  // Removed unused updateProfile destructuring since it doesn't exist in useWalletOperations
   const [displayName, setDisplayName] = useState(profile.displayName || profile.username);
   const [about, setAbout] = useState(profile.about || '');
   const [website, setWebsite] = useState(profile.website || '');

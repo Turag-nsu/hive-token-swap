@@ -8,8 +8,8 @@ import {
   QueryCache,
 } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { NETWORK_CONFIG } from '@/constants';
 import { toast } from 'sonner';
+import { NETWORK_CONFIG } from '@/constants';
 
 // Global error handler
 const handleError = (error: unknown, context?: string) => {
@@ -56,17 +56,6 @@ const logQueryPerformance = (queryKey: string[], duration: number) => {
   if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
     // Example: send to analytics service
     // analytics.track('query_performance', { queryKey, duration });
-  }
-};
-
-// Cache hit/miss tracking
-const logCacheEvent = (queryKey: string[], eventType: 'hit' | 'miss') => {
-  console.debug(`Cache ${eventType}: ${queryKey.join(' > ')}`);
-  
-  // In production, you might want to send this to an analytics service
-  if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
-    // Example: send to analytics service
-    // analytics.track(`cache_${eventType}`, { queryKey });
   }
 };
 
@@ -136,24 +125,23 @@ const createQueryClient = () => {
           timestamp: new Date().toISOString(),
         });
       },
-      onSettled: (data, error, query) => {
+      onSettled: (_, __, query) => {
         // Log query performance
         if (query.meta?.timing) {
           const duration = Date.now() - query.state.dataUpdatedAt;
-          logQueryPerformance(query.queryKey, duration);
+          logQueryPerformance([...query.queryKey] as string[], duration);
         }
       },
     }),
     mutationCache: new MutationCache({
-      onError: (error, variables, context, mutation) => {
-        handleError(error, `Mutation: ${mutation.options.mutationKey?.join(' > ') || 'unknown'}`);
+      onError: (_, __, ___, mutation) => {
+        handleError(_, `Mutation: ${mutation.options.mutationKey?.join(' > ') || 'unknown'}`);
       },
-      onSuccess: (data, variables, context, mutation) => {
+      onSuccess: (_, __, ___, mutation) => {
         // Log successful mutations for debugging
         console.debug('Mutation success:', {
           mutationKey: mutation.options.mutationKey?.join(' > ') || 'unknown',
-          data,
-          variables,
+          data: _,
           timestamp: new Date().toISOString(),
         });
       },

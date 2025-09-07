@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Loader2, RefreshCw } from 'lucide-react';
 
 interface Post {
   author: string;
@@ -140,7 +140,7 @@ export function ClientSideHiveExample() {
           )}
 
           <div className="space-y-4">
-            {posts.map((post, index) => (
+            {posts.map((post) => (
               <Card key={`${post.author}-${post.permlink}`} className="border-l-4 border-l-blue-500">
                 <CardContent className="pt-4">
                   <div className="flex justify-between items-start mb-2">

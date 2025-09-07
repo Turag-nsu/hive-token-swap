@@ -15,7 +15,6 @@ export function HeroDescription({
 }: HeroDescriptionProps) {
     return (
         <MotionP
-            className={`text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed ${className}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -26,7 +25,9 @@ export function HeroDescription({
                 damping: 20
             }}
         >
-            {children}
+            <p className={`text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed ${className}`}>
+                {children}
+            </p>
         </MotionP>
     );
 }

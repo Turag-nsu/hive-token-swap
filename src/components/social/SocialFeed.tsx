@@ -1,32 +1,30 @@
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import {
+    MessageCircle,
+    Share,
+    ChevronUp,
+    ChevronDown,
+    Clock,
+    User,
+    RefreshCw,
+    Filter,
+    MoreHorizontal,
+    UserPlus,
+    Hash
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
+import { useInView } from 'react-intersection-observer';
+import Link from 'next/link';
+import { CommentModal } from './CommentModal';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useUser } from '@/hooks/useUser';
 import { SocialFeedItem } from '@/types/social';
-import {
-    Heart,
-    MessageCircle,
-    Share,
-    ChevronUp,
-    ChevronDown,
-    DollarSign,
-    Clock,
-    User,
-    Hash,
-    RefreshCw,
-    Filter,
-    MoreHorizontal,
-    UserPlus
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { formatDistanceToNow } from 'date-fns';
-import { useInView } from 'react-intersection-observer';
 import { useSocialFeed, useVotePost, usePrefetchPost } from '@/hooks/useSocialFeed';
-import { CommentModal } from './CommentModal';
-import Link from 'next/link';
 import { hiveKeychainAPI } from '@/lib/blockchain/keychain';
 
 // Add this interface for following state
@@ -37,8 +35,6 @@ interface FollowingState {
 export function SocialFeed() {
     const { isAuthenticated, username, refreshUser } = useUser();
     const [showFilters, setShowFilters] = useState(false);
-    const [replyingTo, setReplyingTo] = useState<string | null>(null);
-    const [replyText, setReplyText] = useState('');
     const [showCommentModal, setShowCommentModal] = useState(false);
     const [selectedPost, setSelectedPost] = useState<SocialFeedItem | null>(null);
     const [following, setFollowing] = useState<FollowingState>({});
@@ -62,17 +58,18 @@ export function SocialFeed() {
     const prefetchPost = usePrefetchPost();
     
     // Flatten the pages into a single array of posts
-    const feed = data?.pages.flatMap(page => page) || [];
+    // Fix: properly handle the data structure from useInfiniteQuery
+    const feed: SocialFeedItem[] = data ? (data as any).pages?.flatMap((page: SocialFeedItem[]) => page) : [];
 
     // Auto-fetch next page when reaching the bottom
     const { ref: loadMoreRef, inView } = useInView();
     
     // Fetch next page when in view
-    useCallback(() => {
+    useEffect(() => {
         if (inView && hasNextPage && !isFetchingNextPage) {
             fetchNextPage();
         }
-    }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])();
+    }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     const handleVote = async (post: SocialFeedItem, weight: number) => {
         if (!isAuthenticated || !username) {
@@ -191,7 +188,7 @@ export function SocialFeed() {
 
     const handleMore = (post: SocialFeedItem) => {
         // Show more options for the post
-        toast.info('More options would appear here');
+        toast.info(`More options for post by @${post.author} would appear here`);
     };
 
     const copyToClipboard = (text: string) => {
@@ -213,10 +210,10 @@ export function SocialFeed() {
             + (body.length > 300 ? '...' : '');
     };
 
-    const extractImageFromBody = (body: string): string | null => {
+    const extractImageFromBody = (body: string): string | undefined => {
         const imageRegex = /!\[.*?\]\((https?:\/\/[^\s)]+)\)/;
         const match = body.match(imageRegex);
-        return match ? match[1] : null;
+        return match ? match[1] : undefined;
     };
 
     if (isLoading) {
@@ -458,7 +455,7 @@ export function SocialFeed() {
                                             size="sm"
                                             onClick={() => handleVote(post, 10000)}
                                             disabled={!isAuthenticated || isVoting}
-                                            className={post.active_votes?.find(vote => vote.voter === username && vote.percent > 0) ? 'text-green-600' : ''}
+                                            className={post.active_votes?.find((vote: any) => vote.voter === username && vote.percent > 0) ? 'text-green-600' : ''}
                                         >
                                             <ChevronUp className="w-4 h-4 mr-1" />
                                             {post.upvotes}
@@ -469,7 +466,7 @@ export function SocialFeed() {
                                             size="sm"
                                             onClick={() => handleVote(post, -10000)}
                                             disabled={!isAuthenticated || isVoting}
-                                            className={post.active_votes?.find(vote => vote.voter === username && vote.percent < 0) ? 'text-red-600' : ''}
+                                            className={post.active_votes?.find((vote: any) => vote.voter === username && vote.percent < 0) ? 'text-red-600' : ''}
                                         >
                                             <ChevronDown className="w-4 h-4 mr-1" />
                                             {post.downvotes}

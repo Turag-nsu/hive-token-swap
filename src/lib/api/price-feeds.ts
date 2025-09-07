@@ -32,11 +32,7 @@ interface BinanceTickerResponse {
 }
 
 class PriceFeedAggregator {
-  private readonly sources = [
-    'coingecko',
-    'binance',
-    'hive-engine',
-  ];
+  
 
   private readonly coinGeckoIds: Record<string, string> = {
     'HIVE': 'hive',
@@ -325,6 +321,7 @@ class PriceFeedAggregator {
           const latency = Date.now() - startTime;
           return { source: source.name, healthy: true, latency };
         } catch (error) {
+          console.error(`Health check failed for source ${source.name}:`, error);
           const latency = Date.now() - startTime;
           return { source: source.name, healthy: false, latency };
         }

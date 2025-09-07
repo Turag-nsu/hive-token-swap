@@ -1,7 +1,7 @@
 'use client';
 
 import { KeychainSDK, Login, SignBuffer, KeychainKeyTypes } from 'keychain-sdk';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 const Page = () => {
     const [keychain, setKeychain] = useState<KeychainSDK | null>(null);
@@ -12,7 +12,7 @@ const Page = () => {
     const [logs, setLogs] = useState<string[]>([]);
 
     // Define alternative RPC nodes
-    const rpcNodes = [
+    const rpcNodes = useMemo(() => [
         'https://api.hive.blog',
         'https://anyx.io',
         'https://api.openhive.network',
@@ -20,7 +20,7 @@ const Page = () => {
         'https://hived.emre.sh',
         'https://rpc.ecency.com',
         'https://techcoderx.com'
-    ];
+    ], []);
 
     // Function to add logs
     const addLog = (message: string) => {
@@ -31,12 +31,14 @@ const Page = () => {
     useEffect(() => {
         if (typeof window !== 'undefined') {
             // Initialize KeychainSDK with custom RPC options
-            const keychainInstance = new KeychainSDK(window, {
-                rpc: rpcNodes[0] // Start with the first RPC node
-            });
+            const options: { rpc?: string } = {};
+            if (rpcNodes[0]) {
+                options.rpc = rpcNodes[0];
+            }
+            const keychainInstance = new KeychainSDK(window, options);
             setKeychain(keychainInstance);
         }
-    }, []);
+    }, [rpcNodes]);
 
     // Function to create keychain with specific RPC
     const createKeychainWithRpc = (rpc: string) => {
