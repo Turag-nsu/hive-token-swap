@@ -46,18 +46,18 @@ interface NavItem {
 const navigation: NavItem[] = [
   { href: '/', label: 'Home', icon: <Home className="h-4 w-4" /> },
   { href: '/social', label: 'Community', icon: <Users className="h-4 w-4" /> },
-  { href: '/explore', label: 'Explore', icon: <Compass className="h-4 w-4" /> },
+  // { href: '/explore', label: 'Explore', icon: <Compass className="h-4 w-4" /> },
   { href: '/wallet', label: 'Wallet', icon: <WalletCards className="h-4 w-4" />, badge: 'NEW' },
 ];
 
 const navbarVariants = {
   hidden: { y: -100, opacity: 0 },
-  visible: { 
-    y: 0, 
+  visible: {
+    y: 0,
     opacity: 1,
-    transition: { 
-      type: "spring", 
-      stiffness: 100, 
+    transition: {
+      type: "spring",
+      stiffness: 100,
       damping: 20,
       staggerChildren: 0.1
     }
@@ -66,35 +66,35 @@ const navbarVariants = {
 
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
-  visible: { 
-    y: 0, 
+  visible: {
+    y: 0,
     opacity: 1,
-    transition: { 
-      type: "spring", 
-      stiffness: 100, 
+    transition: {
+      type: "spring",
+      stiffness: 100,
       damping: 20
     }
   }
 };
 
 const mobileMenuVariants = {
-  hidden: { 
+  hidden: {
     opacity: 0,
     y: -20,
     scale: 0.95,
     transition: { duration: 0.2 }
   },
-  visible: { 
+  visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { 
-      type: "spring", 
+    transition: {
+      type: "spring",
       stiffness: 300,
       damping: 30
     }
   },
-  exit: { 
+  exit: {
     opacity: 0,
     y: -20,
     scale: 0.95,
@@ -176,7 +176,7 @@ export function Header() {
   };
 
   return (
-    <MotionHeader 
+    <MotionHeader
       variants={navbarVariants}
       initial="hidden"
       animate="visible"
@@ -184,34 +184,34 @@ export function Header() {
       <div className={cn(
         "sticky top-0 z-50 w-full border-b backdrop-blur-2xl supports-[backdrop-filter]:bg-background/70 transition-all duration-500 relative overflow-hidden",
         "bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-cyan-500/10 border-border/60",
-        isScrolled 
-          ? "py-2 shadow-xl shadow-blue-500/20 border-b-2 border-blue-500/30" 
+        isScrolled
+          ? "py-2 shadow-xl shadow-blue-500/20 border-b-2 border-blue-500/30"
           : "py-3 shadow-lg shadow-purple-500/10"
       )}>
         {/* Mesh gradient background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-500/5 via-purple-500/5 to-cyan-500/5"></div>
         </div>
-        
+
         {/* Animated border */}
         <div className="absolute inset-0 rounded-xl pointer-events-none border border-blue-500/20"></div>
-        
+
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
-            <MotionDiv 
+            <MotionDiv
               variants={itemVariants}
             >
               <div className="flex items-center space-x-4">
                 <Link href="/" className="flex items-center space-x-3 group">
-                  <MotionDiv 
+                  <MotionDiv
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500/40 to-purple-500/30 backdrop-blur-sm border border-blue-500/50 flex items-center justify-center transition-all duration-300 group-hover:from-blue-500/60 group-hover:to-purple-500/50">
                       <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center relative">
-                        <MotionSpan 
-                          animate={{ 
+                        <MotionSpan
+                          animate={{
                             textShadow: [
                               "0 0 5px #00ffff",
                               "0 0 10px #00ffff",
@@ -228,7 +228,7 @@ export function Header() {
                       </div>
                     </div>
                   </MotionDiv>
-                  <MotionSpan 
+                  <MotionSpan
                     whileHover={{ scale: 1.02 }}
                   >
                     <span className="font-bold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-cyan-500 to-purple-500 hidden sm:block transition-all duration-300 group-hover:from-blue-500/90 tracking-tight">
@@ -267,8 +267,8 @@ export function Header() {
                         <span>{item.label}</span>
                       </span>
                       {item.badge && (
-                        <Badge 
-                          variant="secondary" 
+                        <Badge
+                          variant="secondary"
                           className="ml-2 relative z-10 bg-gradient-to-r from-purple-500/40 to-pink-500/40 text-purple-500 border-purple-500/50"
                         >
                           {item.badge}
@@ -374,7 +374,7 @@ export function Header() {
                               exit={{ opacity: 0, y: -10, scale: 0.95 }}
                               transition={{ type: "spring", stiffness: 300, damping: 30 }}
                             >
-                              <div 
+                              <div
                                 id="profile-dropdown"
                                 className="px-3 py-2 text-xs text-muted-foreground border-b border-border/50"
                               >
