@@ -1,8 +1,8 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { ArchitectureDiagrams } from './ArchitectureDiagrams';
 import { UserWorkflows } from './UserWorkflows';
 import { SequenceDiagrams } from './SequenceDiagrams';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export const SystemArchitectureSection: React.FC = () => {
   return (

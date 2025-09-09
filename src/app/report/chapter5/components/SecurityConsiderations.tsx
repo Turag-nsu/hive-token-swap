@@ -1,8 +1,8 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { SecurityAnalysis } from './SecurityAnalysis';
 import { SecurityArchitectureDiagrams } from './SecurityArchitectureDiagrams';
 import { DataPrivacyAndCompliance } from './DataPrivacyAndCompliance';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export const SecurityConsiderations: React.FC = () => {
   return (

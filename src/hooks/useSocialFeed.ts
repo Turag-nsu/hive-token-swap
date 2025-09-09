@@ -1,9 +1,9 @@
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
+import { toast } from 'sonner';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
 import { SocialFeedItem } from '@/types/social';
 import { QUERY_KEYS } from '@/lib/query-utils';
-import { toast } from 'sonner';
 
 // Define the type for page parameters
 interface PageParam {

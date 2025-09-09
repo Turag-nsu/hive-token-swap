@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { PlatformComparison } from './PlatformComparison';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export const BackgroundSection: React.FC = () => {
   return (

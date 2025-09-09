@@ -1,5 +1,4 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { APIDocumentation } from './APIDocumentation';
 import { APIIntegrationDiagrams } from './APIIntegrationDiagrams';
 import { ClassDiagrams } from './ClassDiagrams';
@@ -13,6 +12,7 @@ import { SocialMediaDiagrams } from './SocialMediaDiagrams';
 import { StateManagementDiagrams } from './StateManagementDiagrams';
 import { FrontendArchitectureDiagrams } from './FrontendArchitectureDiagrams';
 import { MobileResponsivenessDiagrams } from './MobileResponsivenessDiagrams';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export const TechnicalImplementationSection: React.FC = () => {
   return (

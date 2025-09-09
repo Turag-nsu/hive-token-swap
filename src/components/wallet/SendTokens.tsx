@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { Send, User, Coins, MessageSquare, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
-import { Send, User, Coins, MessageSquare, AlertTriangle } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { useWalletData } from '@/hooks/useWalletData';
 import { useWalletOperations } from '@/hooks/useWalletOperations';

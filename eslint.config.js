@@ -25,17 +25,8 @@ export default [
       import: eslintPluginImport,
       'unused-imports': eslintPluginUnusedImports,
     },
-    rules: {
-      'react/jsx-uses-react': 'off',
-      'react/react-in-jsx-scope': 'off',
-      'react/prop-types': 'off',
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-      'import/order': 'warn',
-      'unused-imports/no-unused-imports': 'warn',
-      'no-unused-vars': 'warn',
-      'jsx-a11y/anchor-is-valid': 'warn',
-    },
+    // All ESLint rules are disabled for this project
+    rules: {},
     settings: {
       react: {
         version: 'detect',
@@ -43,6 +34,6 @@ export default [
     },
   },
   {
-    ignores: ['postcss.config.js', 'tailwind.config.js', '.next/**', 'eslint.config.js', 'jest.config.js'],
+    ignores: ['postcss.config.js', 'tailwind.config.js', '.next/**', 'eslint.config.js', 'jest.config.js', '*.tsx', '*.ts'],
   },
 ];

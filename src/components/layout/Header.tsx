@@ -17,7 +17,7 @@ import {
   User,
   Home,
   Users,
-  Compass,
+  // Compass,
   WalletCards,
   Activity,
   Globe,

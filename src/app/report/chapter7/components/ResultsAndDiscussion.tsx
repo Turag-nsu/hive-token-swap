@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { ErrorHandling } from './ErrorHandling';
 import { CaseStudies } from './CaseStudies';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export const ResultsAndDiscussion: React.FC = () => {
   return (

@@ -8,7 +8,7 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
         <CardContent className="prose prose-invert max-w-none">
           <h3 className="text-xl text-purple-400 mt-6">4.11 Mobile Responsiveness Visualization Diagrams</h3>
           <p className="text-gray-300 leading-relaxed">
-            This section presents detailed diagrams that illustrate the mobile responsiveness and cross-platform compatibility of the Hive Token Swap Platform. 
+            This section presents detailed diagrams that illustrate the mobile responsiveness and cross-platform compatibility of the Hive Token Swap Platform.
             These diagrams provide a visual representation of responsive design strategies, device compatibility, and mobile-specific optimizations.
           </p>
 
@@ -28,11 +28,11 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-3 text-center text-gray-400 text-sm">
-                  Single column layout<br/>
+                  Single column layout<br />
                   Touch-optimized elements
                 </div>
               </div>
-              
+
               {/* Tablet View */}
               <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-green-400 font-bold mb-3 text-center">Tablet (641px-1024px)</h5>
@@ -46,11 +46,11 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-3 text-center text-gray-400 text-sm">
-                  Two-column layout<br/>
+                  Two-column layout<br />
                   Adaptive components
                 </div>
               </div>
-              
+
               {/* Laptop View */}
               <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-yellow-400 font-bold mb-3 text-center">Laptop (1025px-1280px)</h5>
@@ -64,14 +64,14 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-3 text-center text-gray-400 text-sm">
-                  Multi-column layout<br/>
+                  Multi-column layout<br />
                   Expanded content areas
                 </div>
               </div>
-              
+
               {/* Desktop View */}
               <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
-                <h5 className="text-purple-400 font-bold mb-3 text-center">Desktop (>1280px)</h5>
+                <h5 className="text-purple-400 font-bold mb-3 text-center">Desktop ({'>'}1280px)</h5>
                 <div className="bg-gradient-to-r from-purple-500 to-pink-600 rounded p-3">
                   <div className="w-56 h-36 mx-auto bg-gray-700 rounded border-2 border-gray-600 relative">
                     <div className="absolute top-2 left-2 right-2 h-3 bg-gray-600 rounded"></div>
@@ -82,12 +82,12 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-3 text-center text-gray-400 text-sm">
-                  Full-width layout<br/>
+                  Full-width layout<br />
                   Maximum content display
                 </div>
               </div>
             </div>
-            
+
             {/* Breakpoint Visualization */}
             <div className="mt-6 p-4 bg-gray-800/30 rounded-lg">
               <h5 className="text-cyan-400 font-bold mb-3 text-center">Breakpoint Visualization</h5>
@@ -127,11 +127,11 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                     <div className="absolute -top-1 -left-1 -right-1 -bottom-1 border-2 border-red-500 rounded-lg"></div>
                   </div>
                   <div className="text-center text-gray-400 text-sm">
-                    Minimum recommended<br/>touch target size
+                    Minimum recommended<br />touch target size
                   </div>
                 </div>
               </div>
-              
+
               {/* Gesture Support */}
               <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-green-400 font-bold mb-3 text-center">Gesture Support</h5>
@@ -146,11 +146,11 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                     </div>
                   </div>
                   <div className="text-center text-gray-400 text-sm">
-                    Swipe gestures for<br/>navigation and interaction
+                    Swipe gestures for<br />navigation and interaction
                   </div>
                 </div>
               </div>
-              
+
               {/* Feedback System */}
               <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-purple-400 font-bold mb-3 text-center">Feedback System</h5>
@@ -162,12 +162,12 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                     <div className="absolute -top-1 -left-1 -right-1 -bottom-1 border-2 border-yellow-500 rounded-lg animate-pulse"></div>
                   </div>
                   <div className="text-center text-gray-400 text-sm">
-                    Visual and haptic<br/>feedback on touch
+                    Visual and haptic<br />feedback on touch
                   </div>
                 </div>
               </div>
             </div>
-            
+
             {/* Touch Interface Flow */}
             <div className="mt-6 p-4 bg-gray-800/30 rounded-lg">
               <h5 className="text-amber-400 font-bold mb-3 text-center">Touch Interaction Flow</h5>
@@ -219,7 +219,7 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Browsers */}
               <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-purple-400 font-bold mb-3 text-center">Browser Support</h5>
@@ -245,7 +245,7 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Compatibility Matrix */}
             <div className="mt-6 p-4 bg-gray-800/30 rounded-lg">
               <h5 className="text-green-400 font-bold mb-3 text-center">Compatibility Matrix</h5>
@@ -280,7 +280,7 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                   Portrait ↔ Landscape
                 </div>
               </div>
-              
+
               {/* Network Awareness */}
               <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-600">
                 <h5 className="text-green-400 font-bold mb-2 text-center text-sm">Network Awareness</h5>
@@ -297,7 +297,7 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                   Online/Offline Detection
                 </div>
               </div>
-              
+
               {/* Device API Integration */}
               <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-600">
                 <h5 className="text-purple-400 font-bold mb-2 text-center text-sm">Device API Integration</h5>
@@ -314,7 +314,7 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                   Camera, Sensors, etc.
                 </div>
               </div>
-              
+
               {/* PWA Capabilities */}
               <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-600">
                 <h5 className="text-amber-400 font-bold mb-2 text-center text-sm">PWA Capabilities</h5>
@@ -330,7 +330,7 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Feature Integration Flow */}
             <div className="mt-4 p-3 bg-gray-800/30 rounded-lg">
               <h5 className="text-cyan-400 font-bold mb-2 text-center text-sm">Feature Integration Flow</h5>
@@ -368,11 +368,11 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                     </div>
                   </div>
                   <div className="text-center text-gray-400 text-sm mt-3">
-                    Code splitting and<br/>lazy loading
+                    Code splitting and<br />lazy loading
                   </div>
                 </div>
               </div>
-              
+
               {/* Resource Prioritization */}
               <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-yellow-400 font-bold mb-3 text-center">Resource Prioritization</h5>
@@ -397,7 +397,7 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Image Optimization */}
               <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-green-400 font-bold mb-3 text-center">Image Optimization</h5>
@@ -417,12 +417,12 @@ export const MobileResponsivenessDiagrams: React.FC = () => {
                     <div className="w-4 h-4 bg-teal-600 rounded"></div>
                   </div>
                   <div className="text-center text-gray-400 text-sm mt-2">
-                    Automatic compression<br/>and format selection
+                    Automatic compression<br />and format selection
                   </div>
                 </div>
               </div>
             </div>
-            
+
             {/* Performance Metrics */}
             <div className="mt-6 p-4 bg-gray-800/30 rounded-lg">
               <h5 className="text-blue-400 font-bold mb-3 text-center">Mobile Performance Metrics</h5>

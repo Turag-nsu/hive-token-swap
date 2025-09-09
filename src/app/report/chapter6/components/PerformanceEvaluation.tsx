@@ -1,9 +1,9 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { PerformanceBenchmarks } from './PerformanceBenchmarks';
 import { PerformanceMetricsDiagrams } from './PerformanceMetricsDiagrams';
 import { ScalabilityOptimization } from './ScalabilityOptimization';
 import { MonitoringAndAnalytics } from './MonitoringAndAnalytics';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export const PerformanceEvaluation: React.FC = () => {
   return (

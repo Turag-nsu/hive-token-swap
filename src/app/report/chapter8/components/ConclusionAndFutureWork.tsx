@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { CommunityGovernance } from './CommunityGovernance';
 import { FutureRoadmap } from './FutureRoadmap';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export const ConclusionAndFutureWork: React.FC = () => {
   return (
