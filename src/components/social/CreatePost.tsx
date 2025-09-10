@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { PenTool, Hash, X, Send, Image, Smile } from 'lucide-react';
+import { PenTool, Hash, X, Send, Image, Smile, Sparkles, Wand2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -11,16 +11,31 @@ import { Badge } from '@/components/ui/Badge';
 import { useUser } from '@/hooks/useUser';
 import { useSocialStore } from '@/stores/social';
 import { hiveSocialAPI } from '@/lib/api/hive-social';
-
+import { refinePost } from '@/lib/gemini';
+import {
+    Modal,
+    ModalContent,
+    ModalHeader,
+    ModalTitle,
+    ModalDescription,
+    ModalFooter,
+    useModal
+} from '@/components/ui/Modal';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm'
 export function CreatePost() {
     const { isAuthenticated, username } = useUser();
     const { clearFeed } = useSocialStore();
     const [isExpanded, setIsExpanded] = useState(false);
     const [isPosting, setIsPosting] = useState(false);
+    const [isRefining, setIsRefining] = useState(false);
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [tags, setTags] = useState<string[]>(['hive-social']);
     const [currentTag, setCurrentTag] = useState('');
+
+    // Preview modal state
+    const previewModal = useModal();
 
     const addTag = () => {
         if (currentTag.trim() && !tags.includes(currentTag.trim()) && tags.length < 10) {
@@ -108,7 +123,103 @@ export function CreatePost() {
         }
     };
 
-    if (!isAuthenticated) {
+    const handleRefinePost = async () => {
+        if (!body.trim()) {
+            toast.error('Please enter some content to refine');
+            return;
+        }
+
+        // Get API key from environment or prompt user
+        let apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+        if (!apiKey) {
+            const promptedKey = prompt('Please enter your Gemini API key to refine your post with AI:');
+            if (!promptedKey) {
+                toast.error('Gemini API key is required for AI refinement');
+                return;
+            }
+            apiKey = promptedKey;
+        }
+
+        setIsRefining(true);
+        try {
+            toast.info('Refining your post with AI... This may take a moment.');
+            const refinedContent = await refinePost(body, apiKey);
+
+            // Parse the refined content to extract title, body, and tags
+            const lines = refinedContent.split('\n');
+            let extractedTitle = '';
+            let extractedTags: string[] = [];
+
+            let isInBody = false;
+            let bodyLines: string[] = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i]?.trim() || '';
+
+                // Extract title from H1 heading
+                if (line.startsWith('# ') && !extractedTitle) {
+                    extractedTitle = line.substring(2).trim();
+                    continue;
+                }
+
+                // Look for horizontal line (---) which separates content from tags
+                if (line === '---') {
+                    isInBody = false;
+                    // Extract tags from remaining lines
+                    for (let j = i + 1; j < lines.length; j++) {
+                        const tagLine = lines[j]?.trim() || '';
+                        if (tagLine.startsWith('#')) {
+                            // Extract hashtags and clean them
+                            const tagMatches = tagLine.match(/#(\w+)/g);
+                            if (tagMatches) {
+                                extractedTags = tagMatches.map(tag => tag.substring(1).toLowerCase());
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                // Collect body content
+                if (isInBody || (!line.startsWith('#') && line !== '')) {
+                    isInBody = true;
+                    const currentLine = lines[i];
+                    if (currentLine !== undefined) {
+                        bodyLines.push(currentLine);
+                    }
+                }
+            }
+
+            // Set the extracted title if not already set
+            if (extractedTitle && !title.trim()) {
+                setTitle(extractedTitle);
+            }
+
+            // Set the body content (without title and tags)
+            const cleanBody = bodyLines.join('\n').trim();
+            if (cleanBody) {
+                setBody(cleanBody);
+            }
+
+            // Add extracted tags if any
+            if (extractedTags.length > 0) {
+                const newTags = [...tags];
+                extractedTags.forEach(tag => {
+                    if (!newTags.includes(tag) && newTags.length < 10) {
+                        newTags.push(tag);
+                    }
+                });
+                setTags(newTags);
+            }
+
+            toast.success('✨ Post refined with AI! Title, content, and tags have been organized.');
+        } catch (error: any) {
+            console.error('Error refining post:', error);
+            toast.error(error.message || 'Failed to refine post with AI. Please check your API key.');
+        } finally {
+            setIsRefining(false);
+        }
+    }; if (!isAuthenticated) {
         return (
             <Card>
                 <CardContent className="p-6 text-center">
@@ -228,6 +339,35 @@ export function CreatePost() {
                                 <Button variant="ghost" size="sm" disabled>
                                     <Smile className="w-4 h-4" />
                                 </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleRefinePost}
+                                    disabled={isRefining || !body.trim()}
+                                    className="text-purple-600 hover:text-purple-700"
+                                >
+                                    {isRefining ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                            Refining...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-4 h-4 mr-2" />
+                                            Refine with AI
+                                        </>
+                                    )}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={previewModal.openModal}
+                                    disabled={!title.trim() && !body.trim()}
+                                    className="text-blue-600 hover:text-blue-700"
+                                >
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    Preview
+                                </Button>
                             </div>
 
                             <div className="flex gap-2">
@@ -268,6 +408,100 @@ export function CreatePost() {
                         </div>
                     </div>
                 )}
+
+                {/* Post Preview Modal */}
+                <Modal open={previewModal.open} onOpenChange={previewModal.setOpen}>
+                    <ModalContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <ModalHeader>
+                            <ModalTitle className="flex items-center">
+                                <Eye className="w-5 h-5 mr-2" />
+                                Post Preview
+                            </ModalTitle>
+                            <ModalDescription>
+                                This is how your post will appear on the Hive blockchain
+                            </ModalDescription>
+                        </ModalHeader>
+
+                        <div className="space-y-6 py-4">
+                            {/* Preview Header */}
+                            <div className="flex items-start justify-between border-b pb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                                        <PenTool className="w-6 h-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-lg">@{username || 'your-username'}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                            Just now • Draft
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                    0 HBD • 0 HP
+                                </div>
+                            </div>
+
+                            {/* Preview Title */}
+                            {title && (
+                                <h1 className="text-2xl md:text-3xl font-bold leading-tight">
+                                    {title}
+                                </h1>
+                            )}
+
+                            {/* Preview Content */}
+                            {body && (
+                                <div className="prose prose-sm md:prose-base max-w-none dark:prose-invert">
+                                    <ReactMarkdown
+                                        children={body}
+                                        remarkPlugins={[remarkGfm]}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Preview Tags */}
+                            {tags.length > 0 && (
+                                <div className="flex flex-wrap gap-2 pt-4 border-t">
+                                    {tags.map((tag) => (
+                                        <Badge key={tag} variant="secondary" className="text-xs">
+                                            <Hash className="w-3 h-3 mr-1" />
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Preview Actions */}
+                            <div className="flex items-center justify-between pt-4 border-t">
+                                <div className="flex items-center space-x-6 text-sm text-muted-foreground">
+                                    <span className="flex items-center">
+                                        <span className="mr-1">👍</span>
+                                        0 upvotes
+                                    </span>
+                                    <span className="flex items-center">
+                                        <span className="mr-1">💬</span>
+                                        0 replies
+                                    </span>
+                                    <span className="flex items-center">
+                                        <span className="mr-1">🔗</span>
+                                        Share
+                                    </span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    Preview Mode
+                                </div>
+                            </div>
+                        </div>
+
+                        <ModalFooter>
+                            <Button variant="outline" onClick={previewModal.closeModal}>
+                                Close Preview
+                            </Button>
+                            <Button onClick={previewModal.closeModal}>
+                                Continue Editing
+                            </Button>
+                        </ModalFooter>
+                    </ModalContent>
+                </Modal>
             </CardContent>
         </Card>
     );
